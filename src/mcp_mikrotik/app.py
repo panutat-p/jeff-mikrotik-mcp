@@ -46,6 +46,8 @@ async def health_check(request: Request) -> Response:
 
 # Import scope modules to trigger @mcp.tool() registration
 from mcp_mikrotik.scope import (  # noqa: F401, E402
-    backup, dhcp, dns, firewall_filter, firewall_nat,
-    interfaces, ip_address, ip_pool, logs, poe, queue, safe_mode, routes, users, vlan, wireless, wireguard,
+    backup, bridge, certificates, containers, device_mode, dhcp, dns, firewall_filter,
+    firewall_nat, hotspot, interfaces, ip_address, ip_pool, logs, messaging, packages,
+    poe, ppp, queue, safe_mode, routes, scheduler, snmp, system, users, vlan, vpn,
+    wireless, wireguard,
 )

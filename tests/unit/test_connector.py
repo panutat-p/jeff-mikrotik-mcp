@@ -13,7 +13,7 @@ def test_execute_sync_success(monkeypatch):
         def connect(self):
             return True
 
-        def execute_command(self, command: str) -> str:
+        def execute_command(self, command: str, timeout=None) -> str:
             assert command == "/system identity print"
             return "identity"
 
@@ -53,7 +53,7 @@ def test_execute_sync_exception(monkeypatch):
         def connect(self):
             return True
 
-        def execute_command(self, command: str) -> str:
+        def execute_command(self, command: str, timeout=None) -> str:
             raise RuntimeError("boom")
 
         def disconnect(self):
@@ -72,7 +72,7 @@ def test_execute_mikrotik_command_logs_error(ctx, monkeypatch):
         return fn(*args, **kwargs)
 
     monkeypatch.setattr(asyncio, "to_thread", fake_to_thread)
-    monkeypatch.setattr(connector, "_execute_sync", lambda cmd: "Error: nope")
+    monkeypatch.setattr(connector, "_execute_sync", lambda cmd, timeout=None: "Error: nope")
 
     result = asyncio.run(connector.execute_mikrotik_command("/bad", ctx))
     assert result == "Error: nope"
