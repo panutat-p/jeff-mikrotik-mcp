@@ -117,9 +117,10 @@ async def mikrotik_create_nat_rule(
         else:
             return "NAT rule creation completed but unable to verify."
 
-@mcp.tool(name="list_nat_rules", annotations=annotate(READ, "List NAT Rules"))
-async def mikrotik_list_nat_rules(
+@mcp.tool(name="query_nat_rules", annotations=annotate(READ, "Query NAT Rules"))
+async def mikrotik_query_nat_rules(
     ctx: Context,
+    rule_id: Optional[str] = None,
     chain_filter: Optional[str] = None,
     action_filter: Optional[str] = None,
     src_address_filter: Optional[str] = None,
@@ -129,13 +130,17 @@ async def mikrotik_list_nat_rules(
     disabled_only: bool = False,
     invalid_only: bool = False
 ) -> str:
-    """Lists NAT rules on the MikroTik device."""
+    """Lists NAT rules or returns detail for a specific one by rule_id."""
+    if rule_id:
+        await ctx.info(f"Getting NAT rule details: rule_id={rule_id}")
+        cmd = f"/ip firewall nat print detail where .id={rule_id}"
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"NAT rule with ID '{rule_id}' not found."
+        return f"NAT RULE DETAILS:\n\n{result}"
+
     await ctx.info(f"Listing NAT rules with filters: chain={chain_filter}, action={action_filter}")
-
-    # Build the command
     cmd = "/ip firewall nat print"
-
-    # Add filters
     filters = []
     if chain_filter:
         filters.append(f"chain={chain_filter}")
@@ -153,34 +158,12 @@ async def mikrotik_list_nat_rules(
         filters.append("disabled=yes")
     if invalid_only:
         filters.append("invalid=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
-    # Check for empty result
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No NAT rules found matching the criteria."
-
     return f"NAT RULES:\n\n{result}"
-
-@mcp.tool(name="get_nat_rule", annotations=annotate(READ, "Get NAT Rule"))
-async def mikrotik_get_nat_rule(ctx: Context, rule_id: str) -> str:
-    """Gets detailed information about a specific NAT rule.
-
-    Notes:
-        rule_id: use the ID from list output e.g. "*1" or "0"
-    """
-    await ctx.info(f"Getting NAT rule details: rule_id={rule_id}")
-
-    cmd = f"/ip firewall nat print detail where .id={rule_id}"
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"NAT rule with ID '{rule_id}' not found."
-
-    return f"NAT RULE DETAILS:\n\n{result}"
 
 @mcp.tool(name="update_nat_rule", annotations=annotate(WRITE_IDEMPOTENT, "Update NAT Rule"))
 async def mikrotik_update_nat_rule(
@@ -343,12 +326,7 @@ async def mikrotik_move_nat_rule(ctx: Context, rule_id: str, destination: int) -
 
     return f"NAT rule with ID '{rule_id}' moved to position {destination}."
 
-@mcp.tool(name="enable_nat_rule", annotations=annotate(WRITE_IDEMPOTENT, "Enable NAT Rule"))
-async def mikrotik_enable_nat_rule(ctx: Context, rule_id: str) -> str:
-    """Enables a NAT rule."""
-    return await mikrotik_update_nat_rule(rule_id, disabled=False, ctx=ctx)
-
-@mcp.tool(name="disable_nat_rule", annotations=annotate(WRITE_IDEMPOTENT, "Disable NAT Rule"))
-async def mikrotik_disable_nat_rule(ctx: Context, rule_id: str) -> str:
-    """Disables a NAT rule."""
-    return await mikrotik_update_nat_rule(rule_id, disabled=True, ctx=ctx)
+@mcp.tool(name="set_nat_rule_enabled", annotations=annotate(WRITE_IDEMPOTENT, "Set NAT Rule Enabled"))
+async def mikrotik_set_nat_rule_enabled(ctx: Context, rule_id: str, enabled: bool) -> str:
+    """Enables or disables a NAT rule."""
+    return await mikrotik_update_nat_rule(ctx, rule_id, disabled=not enabled)

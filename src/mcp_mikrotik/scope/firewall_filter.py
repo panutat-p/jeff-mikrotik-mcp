@@ -125,9 +125,10 @@ async def mikrotik_create_filter_rule(
         else:
             return "Firewall filter rule creation completed but unable to verify."
 
-@mcp.tool(name="list_filter_rules", annotations=annotate(READ, "List Firewall Filter Rules"))
-async def mikrotik_list_filter_rules(
+@mcp.tool(name="query_filter_rules", annotations=annotate(READ, "Query Firewall Filter Rules"))
+async def mikrotik_query_filter_rules(
     ctx: Context,
+    rule_id: Optional[str] = None,
     chain_filter: Optional[str] = None,
     action_filter: Optional[str] = None,
     src_address_filter: Optional[str] = None,
@@ -138,13 +139,17 @@ async def mikrotik_list_filter_rules(
     invalid_only: bool = False,
     dynamic_only: bool = False
 ) -> str:
-    """Lists firewall filter rules on the MikroTik device."""
+    """Lists firewall filter rules or returns detail for a specific one by rule_id."""
+    if rule_id:
+        await ctx.info(f"Getting firewall filter rule details: rule_id={rule_id}")
+        cmd = f"/ip firewall filter print detail where .id={rule_id}"
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"Firewall filter rule with ID '{rule_id}' not found."
+        return f"FIREWALL FILTER RULE DETAILS:\n\n{result}"
+
     await ctx.info(f"Listing firewall filter rules with filters: chain={chain_filter}, action={action_filter}")
-
-    # Build the command
     cmd = "/ip firewall filter print"
-
-    # Add filters
     filters = []
     if chain_filter:
         filters.append(f"chain={chain_filter}")
@@ -164,34 +169,12 @@ async def mikrotik_list_filter_rules(
         filters.append("invalid=yes")
     if dynamic_only:
         filters.append("dynamic=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
-    # Check for empty result
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No firewall filter rules found matching the criteria."
-
     return f"FIREWALL FILTER RULES:\n\n{result}"
-
-@mcp.tool(name="get_filter_rule", annotations=annotate(READ, "Get Firewall Filter Rule"))
-async def mikrotik_get_filter_rule(ctx: Context, rule_id: str) -> str:
-    """Gets detailed information about a specific firewall filter rule.
-
-    Notes:
-        rule_id: use the ID from list output e.g. "*1" or "0"
-    """
-    await ctx.info(f"Getting firewall filter rule details: rule_id={rule_id}")
-
-    cmd = f"/ip firewall filter print detail where .id={rule_id}"
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"Firewall filter rule with ID '{rule_id}' not found."
-
-    return f"FIREWALL FILTER RULE DETAILS:\n\n{result}"
 
 @mcp.tool(name="update_filter_rule", annotations=annotate(WRITE_IDEMPOTENT, "Update Firewall Filter Rule"))
 async def mikrotik_update_filter_rule(
@@ -379,15 +362,10 @@ async def mikrotik_move_filter_rule(ctx: Context, rule_id: str, destination: int
 
     return f"Firewall filter rule with ID '{rule_id}' moved to position {destination}."
 
-@mcp.tool(name="enable_filter_rule", annotations=annotate(WRITE_IDEMPOTENT, "Enable Filter Rule"))
-async def mikrotik_enable_filter_rule(ctx: Context, rule_id: str) -> str:
-    """Enables a firewall filter rule."""
-    return await mikrotik_update_filter_rule(rule_id, disabled=False, ctx=ctx)
-
-@mcp.tool(name="disable_filter_rule", annotations=annotate(WRITE_IDEMPOTENT, "Disable Filter Rule"))
-async def mikrotik_disable_filter_rule(ctx: Context, rule_id: str) -> str:
-    """Disables a firewall filter rule."""
-    return await mikrotik_update_filter_rule(rule_id, disabled=True, ctx=ctx)
+@mcp.tool(name="set_filter_rule_enabled", annotations=annotate(WRITE_IDEMPOTENT, "Set Filter Rule Enabled"))
+async def mikrotik_set_filter_rule_enabled(ctx: Context, rule_id: str, enabled: bool) -> str:
+    """Enables or disables a firewall filter rule."""
+    return await mikrotik_update_filter_rule(ctx, rule_id, disabled=not enabled)
 
 @mcp.tool(name="create_basic_firewall_setup", annotations=annotate(DANGEROUS, "Create Basic Firewall Setup"))
 async def mikrotik_create_basic_firewall_setup(ctx: Context) -> str:

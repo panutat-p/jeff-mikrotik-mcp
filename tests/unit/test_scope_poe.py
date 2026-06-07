@@ -52,18 +52,18 @@ def test_list_poe_command_and_filter(ctx, monkeypatch):
     fake = FakeExecutor()
     monkeypatch.setattr(poe, "execute_mikrotik_command", fake, raising=True)
 
-    _run(poe.mikrotik_list_poe(ctx))
+    _run(poe.mikrotik_query_poe(ctx))
     assert fake.commands[-1] == "/interface ethernet poe print"
 
-    _run(poe.mikrotik_list_poe(ctx, interface_filter="ether"))
+    _run(poe.mikrotik_query_poe(ctx, interface_filter="ether"))
     assert fake.commands[-1] == '/interface ethernet poe print where name~"ether"'
 
 
-def test_get_poe_settings_command(ctx, monkeypatch):
+def test_query_poe_detail_command(ctx, monkeypatch):
     from mcp_mikrotik.scope import poe
 
     fake = FakeExecutor()
     monkeypatch.setattr(poe, "execute_mikrotik_command", fake, raising=True)
 
-    _run(poe.mikrotik_get_poe_settings(ctx, name="ether1"))
+    _run(poe.mikrotik_query_poe(ctx, name="ether1"))
     assert fake.commands[-1] == '/interface ethernet poe print detail where name="ether1"'

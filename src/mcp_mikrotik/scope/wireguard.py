@@ -49,18 +49,25 @@ async def mikrotik_create_wireguard_interface(
     return "WireGuard interface created successfully."
 
 
-@mcp.tool(name="list_wireguard_interfaces", annotations=annotate(READ, "List WireGuard Interfaces"))
-async def mikrotik_list_wireguard_interfaces(
+@mcp.tool(name="query_wireguard_interfaces", annotations=annotate(READ, "Query WireGuard Interfaces"))
+async def mikrotik_query_wireguard_interfaces(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     disabled_only: bool = False,
     running_only: bool = False,
 ) -> str:
-    """Lists WireGuard interfaces on the MikroTik device."""
+    """Lists WireGuard interfaces or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting WireGuard interface details: name={name}")
+        cmd = f'/interface wireguard print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"WireGuard interface '{name}' not found."
+        return f"WIREGUARD INTERFACE DETAILS:\n\n{result}"
+
     await ctx.info("Listing WireGuard interfaces")
-
     cmd = "/interface wireguard print"
-
     filters = []
     if name_filter:
         filters.append(f'name~"{name_filter}"')
@@ -68,30 +75,12 @@ async def mikrotik_list_wireguard_interfaces(
         filters.append("disabled=yes")
     if running_only:
         filters.append("running=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No WireGuard interfaces found."
-
     return f"WIREGUARD INTERFACES:\n\n{result}"
-
-
-@mcp.tool(name="get_wireguard_interface", annotations=annotate(READ, "Get WireGuard Interface"))
-async def mikrotik_get_wireguard_interface(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific WireGuard interface."""
-    await ctx.info(f"Getting WireGuard interface details: name={name}")
-
-    cmd = f'/interface wireguard print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"WireGuard interface '{name}' not found."
-
-    return f"WIREGUARD INTERFACE DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="update_wireguard_interface", annotations=annotate(WRITE_IDEMPOTENT, "Update WireGuard Interface"))
@@ -158,32 +147,16 @@ async def mikrotik_remove_wireguard_interface(ctx: Context, name: str) -> str:
     return f"WireGuard interface '{name}' removed successfully."
 
 
-@mcp.tool(name="enable_wireguard_interface", annotations=annotate(WRITE_IDEMPOTENT, "Enable WireGuard Interface"))
-async def mikrotik_enable_wireguard_interface(ctx: Context, name: str) -> str:
-    """Enables a WireGuard interface."""
-    await ctx.info(f"Enabling WireGuard interface: name={name}")
-
-    cmd = f'/interface wireguard enable [find name="{name}"]'
+@mcp.tool(name="set_wireguard_interface_enabled", annotations=annotate(WRITE_IDEMPOTENT, "Set WireGuard Interface Enabled"))
+async def mikrotik_set_wireguard_interface_enabled(ctx: Context, name: str, enabled: bool) -> str:
+    """Enables or disables a WireGuard interface."""
+    action = "enable" if enabled else "disable"
+    await ctx.info(f"Setting WireGuard interface {action}d: name={name}")
+    cmd = f'/interface wireguard {action} [find name="{name}"]'
     result = await execute_mikrotik_command(cmd, ctx)
-
     if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to enable WireGuard interface: {result}"
-
-    return f"WireGuard interface '{name}' enabled successfully."
-
-
-@mcp.tool(name="disable_wireguard_interface", annotations=annotate(WRITE_IDEMPOTENT, "Disable WireGuard Interface"))
-async def mikrotik_disable_wireguard_interface(ctx: Context, name: str) -> str:
-    """Disables a WireGuard interface."""
-    await ctx.info(f"Disabling WireGuard interface: name={name}")
-
-    cmd = f'/interface wireguard disable [find name="{name}"]'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to disable WireGuard interface: {result}"
-
-    return f"WireGuard interface '{name}' disabled successfully."
+        return f"Failed to {action} WireGuard interface: {result}"
+    return f"WireGuard interface '{name}' {action}d successfully."
 
 
 # ---------------------------------------------------------------------------
@@ -247,50 +220,35 @@ async def mikrotik_add_wireguard_peer(
     return "WireGuard peer added successfully."
 
 
-@mcp.tool(name="list_wireguard_peers", annotations=annotate(READ, "List WireGuard Peers"))
-async def mikrotik_list_wireguard_peers(
+@mcp.tool(name="query_wireguard_peers", annotations=annotate(READ, "Query WireGuard Peers"))
+async def mikrotik_query_wireguard_peers(
     ctx: Context,
+    peer_id: Optional[str] = None,
     interface_filter: Optional[str] = None,
     disabled_only: bool = False,
 ) -> str:
-    """Lists WireGuard peers on the MikroTik device."""
+    """Lists WireGuard peers or returns detail for a specific one by peer_id."""
+    if peer_id:
+        await ctx.info(f"Getting WireGuard peer details: peer_id={peer_id}")
+        cmd = f"/interface wireguard peers print detail where .id={peer_id}"
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"WireGuard peer with ID '{peer_id}' not found."
+        return f"WIREGUARD PEER DETAILS:\n\n{result}"
+
     await ctx.info("Listing WireGuard peers")
-
     cmd = "/interface wireguard peers print"
-
     filters = []
     if interface_filter:
         filters.append(f'interface="{interface_filter}"')
     if disabled_only:
         filters.append("disabled=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No WireGuard peers found."
-
     return f"WIREGUARD PEERS:\n\n{result}"
-
-
-@mcp.tool(name="get_wireguard_peer", annotations=annotate(READ, "Get WireGuard Peer"))
-async def mikrotik_get_wireguard_peer(ctx: Context, peer_id: str) -> str:
-    """Gets detailed information about a specific WireGuard peer by ID.
-
-    Notes:
-        peer_id: "*N" or "N" from list output e.g. "*2"
-    """
-    await ctx.info(f"Getting WireGuard peer details: peer_id={peer_id}")
-
-    cmd = f"/interface wireguard peers print detail where .id={peer_id}"
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"WireGuard peer with ID '{peer_id}' not found."
-
-    return f"WIREGUARD PEER DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="update_wireguard_peer", annotations=annotate(WRITE_IDEMPOTENT, "Update WireGuard Peer"))
@@ -376,40 +334,16 @@ async def mikrotik_remove_wireguard_peer(ctx: Context, peer_id: str) -> str:
     return f"WireGuard peer '{peer_id}' removed successfully."
 
 
-@mcp.tool(name="enable_wireguard_peer", annotations=annotate(WRITE_IDEMPOTENT, "Enable WireGuard Peer"))
-async def mikrotik_enable_wireguard_peer(ctx: Context, peer_id: str) -> str:
-    """Enables a WireGuard peer.
-
-    Notes:
-        peer_id: "*N" or "N" from list output e.g. "*2"
-    """
-    await ctx.info(f"Enabling WireGuard peer: peer_id={peer_id}")
-
-    cmd = f"/interface wireguard peers enable {peer_id}"
+@mcp.tool(name="set_wireguard_peer_enabled", annotations=annotate(WRITE_IDEMPOTENT, "Set WireGuard Peer Enabled"))
+async def mikrotik_set_wireguard_peer_enabled(ctx: Context, peer_id: str, enabled: bool) -> str:
+    """Enables or disables a WireGuard peer by peer_id."""
+    action = "enable" if enabled else "disable"
+    await ctx.info(f"Setting WireGuard peer {action}d: peer_id={peer_id}")
+    cmd = f"/interface wireguard peers {action} {peer_id}"
     result = await execute_mikrotik_command(cmd, ctx)
-
     if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to enable WireGuard peer: {result}"
-
-    return f"WireGuard peer '{peer_id}' enabled successfully."
-
-
-@mcp.tool(name="disable_wireguard_peer", annotations=annotate(WRITE_IDEMPOTENT, "Disable WireGuard Peer"))
-async def mikrotik_disable_wireguard_peer(ctx: Context, peer_id: str) -> str:
-    """Disables a WireGuard peer.
-
-    Notes:
-        peer_id: "*N" or "N" from list output e.g. "*2"
-    """
-    await ctx.info(f"Disabling WireGuard peer: peer_id={peer_id}")
-
-    cmd = f"/interface wireguard peers disable {peer_id}"
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to disable WireGuard peer: {result}"
-
-    return f"WireGuard peer '{peer_id}' disabled successfully."
+        return f"Failed to {action} WireGuard peer: {result}"
+    return f"WireGuard peer '{peer_id}' {action}d successfully."
 
 
 @mcp.tool(name="generate_wireguard_client_config", annotations=annotate(READ, "Generate WireGuard Client Config"))

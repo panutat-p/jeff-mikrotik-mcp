@@ -8,36 +8,36 @@ from tests.conftest import FakeExecutor, make_dummy_value
 
 SCOPE_MODULES = [
     "backup",
+    "bridge",
+    "certificates",
+    "containers",
+    "device_mode",
     "dhcp",
     "dns",
     "firewall_filter",
     "firewall_nat",
+    "hotspot",
+    "interfaces",
     "ip_address",
     "ip_pool",
     "logs",
+    "messaging",
+    "packages",
     "poe",
+    "ppp",
     "queue",
     "routes",
+    "scheduler",
+    "snmp",
+    "system",
     "users",
     "vlan",
+    "vpn",
     "wireless",
     "wireguard",
 ]
 
-BROKEN_WRAPPER_FUNCS = {
-    # These wrappers call update_* with a positional argument where `ctx` is first.
-    # They currently raise TypeError ("multiple values for argument 'ctx'").
-    "mikrotik_disable_dns_static",
-    "mikrotik_enable_dns_static",
-    "mikrotik_disable_filter_rule",
-    "mikrotik_enable_filter_rule",
-    "mikrotik_disable_nat_rule",
-    "mikrotik_enable_nat_rule",
-    "mikrotik_disable_route",
-    "mikrotik_enable_route",
-    "mikrotik_disable_user",
-    "mikrotik_enable_user",
-}
+BROKEN_WRAPPER_FUNCS: set[str] = set()
 
 
 @pytest.mark.parametrize("module_name", SCOPE_MODULES)
@@ -47,6 +47,20 @@ def test_scope_module_functions_return_string(module_name, ctx, monkeypatch):
     # Patch module-level executor (each scope imports it directly)
     fake = FakeExecutor()
     monkeypatch.setattr(module, "execute_mikrotik_command", fake, raising=True)
+    if hasattr(module, "wait_for_router_ssh"):
+        monkeypatch.setattr(module, "wait_for_router_ssh", lambda *a, **k: True, raising=True)
+    async def _noop_sleep(*_a, **_k):
+        return None
+
+    monkeypatch.setattr(asyncio, "sleep", _noop_sleep)
+    if hasattr(module, "upload_file_to_router"):
+        async def _fake_upload(filename, content, ctx):
+            return ""
+        monkeypatch.setattr(module, "upload_file_to_router", _fake_upload, raising=True)
+    if hasattr(module, "download_file_from_router"):
+        async def _fake_download(filename, ctx):
+            return b"data", ""
+        monkeypatch.setattr(module, "download_file_from_router", _fake_download, raising=True)
 
     # Run every coroutine function once with dummy args.
     for name, fn in inspect.getmembers(module, inspect.iscoroutinefunction):

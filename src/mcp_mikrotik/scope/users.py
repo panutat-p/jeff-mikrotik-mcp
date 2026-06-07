@@ -54,19 +54,27 @@ async def mikrotik_add_user(
         else:
             return "User creation completed but unable to verify."
 
-@mcp.tool(name="list_users", annotations=annotate(READ, "List Users"))
-async def mikrotik_list_users(
+@mcp.tool(name="query_users", annotations=annotate(READ, "Query Users"))
+async def mikrotik_query_users(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     group_filter: Optional[str] = None,
     disabled_only: bool = False,
     active_only: bool = False
 ) -> str:
-    """Lists users on MikroTik device."""
+    """Lists users or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting user details: name={name}")
+        cmd = f'/user print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"User '{name}' not found."
+        result = re.sub(r'password="[^"]*"', 'password="***"', result)
+        return f"USER DETAILS:\n\n{result}"
+
     await ctx.info(f"Listing users with filters: name={name_filter}, group={group_filter}")
-
     cmd = "/user print"
-
     filters = []
     if name_filter:
         filters.append(f'name~"{name_filter}"')
@@ -74,35 +82,13 @@ async def mikrotik_list_users(
         filters.append(f'group="{group_filter}"')
     if disabled_only:
         filters.append("disabled=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No users found matching the criteria."
-
-    # Remove passwords from output
     result = re.sub(r'password="[^"]*"', 'password="***"', result)
-
     return f"USERS:\n\n{result}"
-
-@mcp.tool(name="get_user", annotations=annotate(READ, "Get User"))
-async def mikrotik_get_user(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific user."""
-    await ctx.info(f"Getting user details: name={name}")
-
-    cmd = f'/user print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"User '{name}' not found."
-
-    # Remove password from output
-    result = re.sub(r'password="[^"]*"', 'password="***"', result)
-
-    return f"USER DETAILS:\n\n{result}"
 
 @mcp.tool(name="update_user", annotations=annotate(WRITE_IDEMPOTENT, "Update User"))
 async def mikrotik_update_user(
@@ -179,15 +165,10 @@ async def mikrotik_remove_user(ctx: Context, name: str) -> str:
 
     return f"User '{name}' removed successfully."
 
-@mcp.tool(name="disable_user", annotations=annotate(WRITE_IDEMPOTENT, "Disable User"))
-async def mikrotik_disable_user(ctx: Context, name: str) -> str:
-    """Disables a user."""
-    return await mikrotik_update_user(name, disabled=True, ctx=ctx)
-
-@mcp.tool(name="enable_user", annotations=annotate(WRITE_IDEMPOTENT, "Enable User"))
-async def mikrotik_enable_user(ctx: Context, name: str) -> str:
-    """Enables a user."""
-    return await mikrotik_update_user(name, disabled=False, ctx=ctx)
+@mcp.tool(name="set_user_enabled", annotations=annotate(WRITE_IDEMPOTENT, "Set User Enabled"))
+async def mikrotik_set_user_enabled(ctx: Context, name: str, enabled: bool) -> str:
+    """Enables or disables a user."""
+    return await mikrotik_update_user(ctx, name, disabled=not enabled)
 
 @mcp.tool(name="add_user_group", annotations=annotate(WRITE, "Add User Group"))
 async def mikrotik_add_user_group(
@@ -243,45 +224,35 @@ async def mikrotik_add_user_group(
         else:
             return "User group creation completed but unable to verify."
 
-@mcp.tool(name="list_user_groups", annotations=annotate(READ, "List User Groups"))
-async def mikrotik_list_user_groups(
+@mcp.tool(name="query_user_groups", annotations=annotate(READ, "Query User Groups"))
+async def mikrotik_query_user_groups(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     policy_filter: Optional[str] = None
 ) -> str:
-    """Lists user groups on MikroTik device."""
+    """Lists user groups or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting user group details: name={name}")
+        cmd = f'/user group print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"User group '{name}' not found."
+        return f"USER GROUP DETAILS:\n\n{result}"
+
     await ctx.info(f"Listing user groups with filters: name={name_filter}")
-
     cmd = "/user group print"
-
     filters = []
     if name_filter:
         filters.append(f'name~"{name_filter}"')
     if policy_filter:
         filters.append(f'policy~"{policy_filter}"')
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No user groups found matching the criteria."
-
     return f"USER GROUPS:\n\n{result}"
-
-@mcp.tool(name="get_user_group", annotations=annotate(READ, "Get User Group"))
-async def mikrotik_get_user_group(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific user group."""
-    await ctx.info(f"Getting user group details: name={name}")
-
-    cmd = f'/user group print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"User group '{name}' not found."
-
-    return f"USER GROUP DETAILS:\n\n{result}"
 
 @mcp.tool(name="update_user_group", annotations=annotate(WRITE_IDEMPOTENT, "Update User Group"))
 async def mikrotik_update_user_group(

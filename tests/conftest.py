@@ -37,7 +37,7 @@ class FakeExecutor:
     def __init__(self):
         self.commands: list[str] = []
 
-    async def __call__(self, command: str, _ctx: Any) -> str:
+    async def __call__(self, command: str, _ctx: Any, timeout: Any = None) -> str:
         self.commands.append(command)
 
         cmd = command.lower()

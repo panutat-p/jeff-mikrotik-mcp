@@ -1,10 +1,11 @@
-from typing import Literal, Optional, List
-from ..app import mcp, READ, WRITE, DANGEROUS, annotate
-from ..connector import execute_mikrotik_command
-from mcp.server.fastmcp import Context
 import base64
 import time
-import os
+from typing import Literal, Optional, List
+
+from mcp.server.fastmcp import Context
+
+from ..app import mcp, READ, WRITE, DANGEROUS, annotate
+from ..connector import execute_mikrotik_command, upload_file_to_router, download_file_from_router
 
 @mcp.tool(name="create_backup", annotations=annotate(WRITE, "Create Backup"))
 async def mikrotik_create_backup(
@@ -35,8 +36,6 @@ async def mikrotik_create_backup(
 
     result = await execute_mikrotik_command(cmd, ctx)
 
-    # Check if backup was successful
-    print(result)
     if "saved" in result or not result.strip():
         # Get file details
         file_cmd = f"/file print detail where name={name}.backup"
@@ -196,17 +195,13 @@ async def mikrotik_download_file(
     if count.strip() == "0":
         return f"File '{filename}' not found."
 
-    # Get file content (this is a simplified version)
-    # In a real implementation, you'd need to handle file transfer properly
-    content_cmd = f"/file print file={filename}"
-    content = await execute_mikrotik_command(content_cmd, ctx)
-
-    if content:
-        # Encode content to base64 for safe transmission
-        encoded = base64.b64encode(content.encode('utf-8')).decode('utf-8')
+    data, error = await download_file_from_router(filename, ctx)
+    if error:
+        return error
+    if data:
+        encoded = base64.b64encode(data).decode("utf-8")
         return f"FILE_CONTENT_BASE64:{encoded}"
-    else:
-        return f"Failed to download file '{filename}'."
+    return f"Failed to download file '{filename}'."
 
 @mcp.tool(name="upload_file", annotations=annotate(WRITE, "Upload File"))
 async def mikrotik_upload_file(
@@ -217,15 +212,21 @@ async def mikrotik_upload_file(
     """Uploads a base64-encoded file to the MikroTik device (for restore operations)."""
     await ctx.info(f"Uploading file: filename={filename}")
 
-    # Decode base64 content
     try:
-        content = base64.b64decode(content_base64).decode('utf-8')
+        content = base64.b64decode(content_base64)
     except Exception as e:
         return f"Failed to decode file content: {str(e)}"
 
-    # This is a simplified version - actual implementation would need proper file upload
-    # For now, we'll simulate it
-    return f"File '{filename}' uploaded successfully (simulated)."
+    error = await upload_file_to_router(filename, content, ctx)
+    if error:
+        return error
+
+    check_cmd = f"/file print count-only where name={filename}"
+    count = await execute_mikrotik_command(check_cmd, ctx)
+    if count.strip() == "0":
+        return f"Upload completed but file '{filename}' was not found on the device."
+
+    return f"File '{filename}' uploaded successfully ({len(content)} bytes)."
 
 @mcp.tool(name="restore_backup", annotations=annotate(DANGEROUS, "Restore Backup"))
 async def mikrotik_restore_backup(

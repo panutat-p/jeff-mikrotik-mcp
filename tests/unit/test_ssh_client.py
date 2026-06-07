@@ -172,3 +172,194 @@ def test_ssh_client_returns_stderr_when_no_stdout(monkeypatch):
     assert client.connect() is True
     assert client.execute_command("/x") == "failure: nope"
 
+
+# ---------------------------------------------------------------------------
+# execute_command timeout, SFTP upload/download, wait_for_ssh
+# ---------------------------------------------------------------------------
+
+def test_execute_command_timeout(monkeypatch):
+    from mcp_mikrotik.mikrotik_ssh_client import MikroTikSSHClient
+    import mcp_mikrotik.mikrotik_ssh_client as mod
+
+    class DummyChannel:
+        def recv_ready(self):
+            return False
+
+        def recv_stderr_ready(self):
+            return False
+
+        def exit_status_ready(self):
+            return False
+
+        def recv(self, _n):
+            return b""
+
+        def recv_stderr(self, _n):
+            return b""
+
+    class DummyStdout:
+        channel = DummyChannel()
+
+    class DummySSH:
+        def set_missing_host_key_policy(self, _policy):
+            pass
+
+        def connect(self, **kwargs):
+            pass
+
+        def exec_command(self, command: str):
+            return (None, DummyStdout(), DummyStdout())
+
+        def close(self):
+            pass
+
+    times = iter([0.0, 0.0, 2.0])
+
+    monkeypatch.setattr(mod.paramiko, "SSHClient", lambda: DummySSH())
+    monkeypatch.setattr(mod.time, "monotonic", lambda: next(times))
+    monkeypatch.setattr(mod.time, "sleep", lambda _s: None)
+
+    client = MikroTikSSHClient(host="h", username="u", password="p", key_filename=None)
+    assert client.connect() is True
+    with pytest.raises(TimeoutError, match="timed out after 1.0s"):
+        client.execute_command("/hang", timeout=1.0)
+
+
+def test_upload_file_uses_sftp(monkeypatch):
+    from mcp_mikrotik.mikrotik_ssh_client import MikroTikSSHClient
+    import mcp_mikrotik.mikrotik_ssh_client as mod
+
+    state = {"remote_path": None, "data": None, "sftp_closed": 0}
+
+    class DummySFTP:
+        def putfo(self, file_obj, remote_path):
+            state["remote_path"] = remote_path
+            state["data"] = file_obj.read()
+
+        def close(self):
+            state["sftp_closed"] += 1
+
+    class DummySSH:
+        def set_missing_host_key_policy(self, _policy):
+            pass
+
+        def connect(self, **kwargs):
+            pass
+
+        def open_sftp(self):
+            return DummySFTP()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(mod.paramiko, "SSHClient", lambda: DummySSH())
+
+    client = MikroTikSSHClient(host="h", username="u", password="p", key_filename=None)
+    assert client.connect() is True
+    client.upload_file("config.rsc", b"router-config")
+    assert state["remote_path"] == "/config.rsc"
+    assert state["data"] == b"router-config"
+    assert state["sftp_closed"] == 1
+
+
+def test_download_file_uses_sftp(monkeypatch):
+    from mcp_mikrotik.mikrotik_ssh_client import MikroTikSSHClient
+    import mcp_mikrotik.mikrotik_ssh_client as mod
+
+    state = {"remote_path": None, "sftp_closed": 0}
+
+    class DummySFTP:
+        def getfo(self, remote_path, file_obj):
+            state["remote_path"] = remote_path
+            file_obj.write(b"backup-bytes")
+
+        def close(self):
+            state["sftp_closed"] += 1
+
+    class DummySSH:
+        def set_missing_host_key_policy(self, _policy):
+            pass
+
+        def connect(self, **kwargs):
+            pass
+
+        def open_sftp(self):
+            return DummySFTP()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(mod.paramiko, "SSHClient", lambda: DummySSH())
+
+    client = MikroTikSSHClient(host="h", username="u", password="p", key_filename=None)
+    assert client.connect() is True
+    data = client.download_file("/backup.backup")
+    assert state["remote_path"] == "/backup.backup"
+    assert data == b"backup-bytes"
+    assert state["sftp_closed"] == 1
+
+
+def test_upload_file_requires_connect():
+    from mcp_mikrotik.mikrotik_ssh_client import MikroTikSSHClient
+
+    client = MikroTikSSHClient(host="h", username="u", password="p", key_filename=None)
+    with pytest.raises(Exception, match="Not connected"):
+        client.upload_file("x.rsc", b"x")
+
+
+def test_download_file_requires_connect():
+    from mcp_mikrotik.mikrotik_ssh_client import MikroTikSSHClient
+
+    client = MikroTikSSHClient(host="h", username="u", password="p", key_filename=None)
+    with pytest.raises(Exception, match="Not connected"):
+        client.download_file("x.backup")
+
+
+def test_wait_for_ssh_succeeds(monkeypatch):
+    from mcp_mikrotik.mikrotik_ssh_client import MikroTikSSHClient
+    import mcp_mikrotik.mikrotik_ssh_client as mod
+
+    attempts = {"count": 0}
+
+    def fake_connect(self):
+        attempts["count"] += 1
+        return attempts["count"] >= 2
+
+    def fake_disconnect(self):
+        pass
+
+    monkeypatch.setattr(MikroTikSSHClient, "connect", fake_connect)
+    monkeypatch.setattr(MikroTikSSHClient, "disconnect", fake_disconnect)
+    monkeypatch.setattr(mod.time, "monotonic", lambda: 0.0)
+    monkeypatch.setattr(mod.time, "sleep", lambda _s: None)
+
+    assert MikroTikSSHClient.wait_for_ssh(
+        host="h",
+        username="u",
+        password="p",
+        key_filename=None,
+        timeout=10.0,
+        interval=1.0,
+    ) is True
+    assert attempts["count"] == 2
+
+
+def test_wait_for_ssh_times_out(monkeypatch):
+    from mcp_mikrotik.mikrotik_ssh_client import MikroTikSSHClient
+    import mcp_mikrotik.mikrotik_ssh_client as mod
+
+    times = iter([0.0, 5.0, 11.0])
+
+    monkeypatch.setattr(MikroTikSSHClient, "connect", lambda self: False)
+    monkeypatch.setattr(mod.time, "monotonic", lambda: next(times))
+    monkeypatch.setattr(mod.time, "sleep", lambda _s: None)
+
+    assert MikroTikSSHClient.wait_for_ssh(
+        host="h",
+        username="u",
+        password="p",
+        key_filename=None,
+        timeout=10.0,
+        interval=1.0,
+    ) is False
+

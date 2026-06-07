@@ -1,3 +1,4 @@
+import asyncio
 import time
 from typing import Literal, Optional, List, Dict
 from mcp.server.fastmcp import Context
@@ -287,26 +288,40 @@ async def mikrotik_monitor_logs(
     action: Optional[str] = None,
     duration: int = 10
 ) -> str:
-    """Monitors MikroTik logs in near-real-time for a limited duration (max 60s)."""
+    """Monitors MikroTik logs by polling for a limited duration (max 60s)."""
     await ctx.info(f"Monitoring logs for {duration} seconds")
 
-    # Limit duration for safety
     if duration > 60:
         duration = 60
+    if duration < 1:
+        duration = 1
 
-    # This is a simplified version - real-time monitoring would require
-    # a different approach with streaming
-    cmd = "/log print follow-only"
-
+    filters = []
     if topics:
-        cmd += f' where topics~"{topics}"'
-
+        filters.append(f'topics~"{topics}"')
     if action:
-        cmd += f' action="{action}"'
+        filters.append(f'action="{action}"')
 
-    # Add a limit to prevent overwhelming output
-    cmd += " limit=100"
+    seen: set[str] = set()
+    lines: list[str] = []
+    poll_interval = 2
+    polls = max(1, duration // poll_interval)
 
-    result = await execute_mikrotik_command(cmd, ctx)
+    for _ in range(polls):
+        cmd = "/log print where time>([:timestamp]-5s)"
+        if filters:
+            cmd += " and " + " and ".join(filters)
+        cmd += " limit=100"
 
-    return f"LOG MONITOR (last {duration} seconds):\n\n{result}"
+        result = await execute_mikrotik_command(cmd, ctx)
+        for line in result.splitlines():
+            stripped = line.strip()
+            if stripped and stripped not in seen:
+                seen.add(stripped)
+                lines.append(line)
+
+        if polls > 1:
+            await asyncio.sleep(poll_interval)
+
+    body = "\n".join(lines) if lines else "No new log entries during monitoring window."
+    return f"LOG MONITOR ({duration}s, {len(lines)} unique entries):\n\n{body}"
