@@ -62,7 +62,7 @@ Tools pass extended timeouts and return clear messages when physical steps are r
 
 RouterOS v7.x WiFi (`/interface wifi`, `/interface wifiwave2`) does not use legacy security profiles or access lists. Tools named `*_wireless_security_profile` and `*_wireless_access_list` return guidance messages on v7 devices.
 
-## Observed on this project (hAP ax³, ROS 7.23.1)
+## Observed during testing (RouterOS 7.x)
 
 - Container package install requires `enable_package` + `apply_package_changes` (reboot)
 - Device-mode `container=yes` still requires physical reset (SSH and REST both trigger it)
