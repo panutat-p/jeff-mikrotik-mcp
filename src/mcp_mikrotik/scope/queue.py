@@ -136,41 +136,35 @@ async def mikrotik_create_queue_type(
     return "Queue type creation completed but unable to verify."
 
 
-@mcp.tool(name="list_queue_types", annotations=annotate(READ, "List Queue Types"))
-async def mikrotik_list_queue_types(
+@mcp.tool(name="query_queue_types", annotations=annotate(READ, "Query Queue Types"))
+async def mikrotik_query_queue_types(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     kind_filter: Optional[str] = None,
 ) -> str:
-    """Lists queue types on the MikroTik device."""
-    await ctx.info("Listing queue types")
+    """Lists queue types or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting queue type details: name={name}")
+        cmd = f'/queue type print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"Queue type '{name}' not found."
+        return f"QUEUE TYPE DETAILS:\n\n{result}"
 
+    await ctx.info("Listing queue types")
     cmd = "/queue type print"
     filters = []
     if name_filter:
         filters.append(f'name~"{name_filter}"')
     if kind_filter:
         filters.append(f"kind={kind_filter}")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
     if not result or result.strip() == "":
         return "No queue types found matching the criteria."
     return f"QUEUE TYPES:\n\n{result}"
-
-
-@mcp.tool(name="get_queue_type", annotations=annotate(READ, "Get Queue Type"))
-async def mikrotik_get_queue_type(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific queue type."""
-    await ctx.info(f"Getting queue type details: name={name}")
-
-    cmd = f'/queue type print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-    if not result or result.strip() == "":
-        return f"Queue type '{name}' not found."
-    return f"QUEUE TYPE DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="update_queue_type", annotations=annotate(WRITE_IDEMPOTENT, "Update Queue Type"))
@@ -328,17 +322,25 @@ async def mikrotik_create_queue_tree(
     return "Queue tree creation completed but unable to verify."
 
 
-@mcp.tool(name="list_queue_trees", annotations=annotate(READ, "List Queue Trees"))
-async def mikrotik_list_queue_trees(
+@mcp.tool(name="query_queue_trees", annotations=annotate(READ, "Query Queue Trees"))
+async def mikrotik_query_queue_trees(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     parent_filter: Optional[str] = None,
     disabled_only: bool = False,
     invalid_only: bool = False,
 ) -> str:
-    """Lists queue trees on the MikroTik device."""
-    await ctx.info("Listing queue trees")
+    """Lists queue trees or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting queue tree details: name={name}")
+        cmd = f'/queue tree print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"Queue tree '{name}' not found."
+        return f"QUEUE TREE DETAILS:\n\n{result}"
 
+    await ctx.info("Listing queue trees")
     cmd = "/queue tree print"
     filters = []
     if name_filter:
@@ -349,26 +351,12 @@ async def mikrotik_list_queue_trees(
         filters.append("disabled=yes")
     if invalid_only:
         filters.append("invalid=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
     if not result or result.strip() == "":
         return "No queue trees found matching the criteria."
     return f"QUEUE TREES:\n\n{result}"
-
-
-@mcp.tool(name="get_queue_tree", annotations=annotate(READ, "Get Queue Tree"))
-async def mikrotik_get_queue_tree(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific queue tree."""
-    await ctx.info(f"Getting queue tree details: name={name}")
-
-    cmd = f'/queue tree print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-    if not result or result.strip() == "":
-        return f"Queue tree '{name}' not found."
-    return f"QUEUE TREE DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="update_queue_tree", annotations=annotate(WRITE_IDEMPOTENT, "Update Queue Tree"))
@@ -571,17 +559,25 @@ async def mikrotik_create_simple_queue(
     return "Simple queue creation completed but unable to verify."
 
 
-@mcp.tool(name="list_simple_queues", annotations=annotate(READ, "List Simple Queues"))
-async def mikrotik_list_simple_queues(
+@mcp.tool(name="query_simple_queues", annotations=annotate(READ, "Query Simple Queues"))
+async def mikrotik_query_simple_queues(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     target_filter: Optional[str] = None,
     disabled_only: bool = False,
     invalid_only: bool = False,
 ) -> str:
-    """Lists simple queues on the MikroTik device."""
-    await ctx.info("Listing simple queues")
+    """Lists simple queues or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting simple queue details: name={name}")
+        cmd = f'/queue simple print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"Simple queue '{name}' not found."
+        return f"SIMPLE QUEUE DETAILS:\n\n{result}"
 
+    await ctx.info("Listing simple queues")
     cmd = "/queue simple print"
     filters = []
     if name_filter:
@@ -592,26 +588,12 @@ async def mikrotik_list_simple_queues(
         filters.append("disabled=yes")
     if invalid_only:
         filters.append("invalid=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
     if not result or result.strip() == "":
         return "No simple queues found matching the criteria."
     return f"SIMPLE QUEUES:\n\n{result}"
-
-
-@mcp.tool(name="get_simple_queue", annotations=annotate(READ, "Get Simple Queue"))
-async def mikrotik_get_simple_queue(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific simple queue."""
-    await ctx.info(f"Getting simple queue details: name={name}")
-
-    cmd = f'/queue simple print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-    if not result or result.strip() == "":
-        return f"Simple queue '{name}' not found."
-    return f"SIMPLE QUEUE DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="update_simple_queue", annotations=annotate(WRITE_IDEMPOTENT, "Update Simple Queue"))

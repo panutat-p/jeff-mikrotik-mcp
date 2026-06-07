@@ -4,9 +4,10 @@ from mcp.server.fastmcp import Context
 from ..app import mcp, READ, WRITE_IDEMPOTENT, annotate
 
 
-@mcp.tool(name="list_interfaces", annotations=annotate(READ, "List Interfaces"))
-async def mikrotik_list_interfaces(
+@mcp.tool(name="query_interfaces", annotations=annotate(READ, "Query Interfaces"))
+async def mikrotik_query_interfaces(
     ctx: Context,
+    name: Optional[str] = None,
     type_filter: Optional[Literal[
         "ether", "wg", "bridge", "vlan", "pppoe-out", "pppoe-server",
         "wifi", "wireless", "lte", "loopback", "sfp", "sfp-sfpplus"
@@ -15,18 +16,17 @@ async def mikrotik_list_interfaces(
     running_only: bool = False,
     disabled_only: bool = False,
 ) -> str:
-    """Lists all interfaces on the MikroTik device (ethernet, bridge, WireGuard,
-    PPPoE, VLAN, WiFi, SFP, LTE, loopback, and any other type).
+    """Lists all interfaces or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting interface details: name={name}")
+        cmd = f'/interface print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"Interface '{name}' not found."
+        return f"INTERFACE DETAILS:\n\n{result}"
 
-    Notes:
-        type_filter: RouterOS interface type e.g. "ether", "bridge", "vlan",
-            "wg", "pppoe-out", "wifi", "lte", "loopback"
-        name_filter: partial name match e.g. "ether" matches ether1, ether2 …
-    """
     await ctx.info("Listing all interfaces")
-
     cmd = "/interface print"
-
     filters = []
     if type_filter:
         filters.append(f'type="{type_filter}"')
@@ -36,34 +36,12 @@ async def mikrotik_list_interfaces(
         filters.append("running=yes")
     if disabled_only:
         filters.append("disabled=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "":
         return "No interfaces found matching the criteria."
-
     return f"INTERFACES:\n\n{result}"
-
-
-@mcp.tool(name="get_interface", annotations=annotate(READ, "Get Interface"))
-async def mikrotik_get_interface(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific interface by name.
-
-    Notes:
-        name: exact interface name e.g. "ether1", "bridge", "pppoe-out1", "wg0"
-    """
-    await ctx.info(f"Getting interface details: name={name}")
-
-    cmd = f'/interface print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"Interface '{name}' not found."
-
-    return f"INTERFACE DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="enable_interface", annotations=annotate(WRITE_IDEMPOTENT, "Enable Interface"))

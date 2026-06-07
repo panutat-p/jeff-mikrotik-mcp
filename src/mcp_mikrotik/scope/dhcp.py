@@ -55,21 +55,26 @@ async def mikrotik_create_dhcp_server(
 
     return f"DHCP server created successfully:\n\n{details}"
 
-@mcp.tool(name="list_dhcp_servers", annotations=annotate(READ, "List DHCP Servers"))
-async def mikrotik_list_dhcp_servers(
+@mcp.tool(name="query_dhcp_servers", annotations=annotate(READ, "Query DHCP Servers"))
+async def mikrotik_query_dhcp_servers(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     interface_filter: Optional[str] = None,
     disabled_only: bool = False,
     invalid_only: bool = False
 ) -> str:
-    """Lists DHCP servers on the MikroTik device."""
+    """Lists DHCP servers or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting DHCP server details: name={name}")
+        cmd = f'/ip dhcp-server print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"DHCP server '{name}' not found."
+        return f"DHCP SERVER DETAILS:\n\n{result}"
+
     await ctx.info(f"Listing DHCP servers with filters: name={name_filter}, interface={interface_filter}")
-
-    # Build the command
     cmd = "/ip dhcp-server print"
-
-    # Add filters
     filters = []
     if name_filter:
         filters.append(f'name~"{name_filter}"')
@@ -79,29 +84,12 @@ async def mikrotik_list_dhcp_servers(
         filters.append("disabled=yes")
     if invalid_only:
         filters.append("invalid=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "":
         return "No DHCP servers found matching the criteria."
-
     return f"DHCP SERVERS:\n\n{result}"
-
-@mcp.tool(name="get_dhcp_server", annotations=annotate(READ, "Get DHCP Server"))
-async def mikrotik_get_dhcp_server(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific DHCP server."""
-    await ctx.info(f"Getting DHCP server details: name={name}")
-
-    cmd = f'/ip dhcp-server print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"DHCP server '{name}' not found."
-
-    return f"DHCP SERVER DETAILS:\n\n{result}"
 
 @mcp.tool(name="create_dhcp_network", annotations=annotate(WRITE, "Create DHCP Network"))
 async def mikrotik_create_dhcp_network(

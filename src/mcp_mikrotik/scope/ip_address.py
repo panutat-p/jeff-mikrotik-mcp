@@ -44,22 +44,30 @@ async def mikrotik_add_ip_address(
 
     return f"IP address added successfully:\n\n{details}"
 
-@mcp.tool(name="list_ip_addresses", annotations=annotate(READ, "List IP Addresses"))
-async def mikrotik_list_ip_addresses(
+@mcp.tool(name="query_ip_addresses", annotations=annotate(READ, "Query IP Addresses"))
+async def mikrotik_query_ip_addresses(
     ctx: Context,
+    address_id: Optional[str] = None,
     interface_filter: Optional[str] = None,
     address_filter: Optional[str] = None,
     network_filter: Optional[str] = None,
     disabled_only: bool = False,
     dynamic_only: bool = False
 ) -> str:
-    """Lists IP addresses on the MikroTik device."""
+    """Lists IP addresses or returns detail for a specific one by address_id."""
+    if address_id:
+        await ctx.info(f"Getting IP address details: address_id={address_id}")
+        cmd = f'/ip address print detail where .id="{address_id}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            cmd = f'/ip address print detail where address="{address_id}"'
+            result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"IP address '{address_id}' not found."
+        return f"IP ADDRESS DETAILS:\n\n{result}"
+
     await ctx.info(f"Listing IP addresses with filters: interface={interface_filter}, address={address_filter}")
-
-    # Build the command
     cmd = "/ip address print"
-
-    # Add filters
     filters = []
     if interface_filter:
         filters.append(f'interface="{interface_filter}"')
@@ -71,35 +79,12 @@ async def mikrotik_list_ip_addresses(
         filters.append("disabled=yes")
     if dynamic_only:
         filters.append("dynamic=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "":
         return "No IP addresses found matching the criteria."
-
     return f"IP ADDRESSES:\n\n{result}"
-
-@mcp.tool(name="get_ip_address", annotations=annotate(READ, "Get IP Address"))
-async def mikrotik_get_ip_address(ctx: Context, address_id: str) -> str:
-    """Gets detailed information about a specific IP address by ID or address value."""
-    await ctx.info(f"Getting IP address details: address_id={address_id}")
-
-    # Try to find by ID first, then by address
-    cmd = f'/ip address print detail where .id="{address_id}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        # Try finding by address value
-        cmd = f'/ip address print detail where address="{address_id}"'
-        result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"IP address '{address_id}' not found."
-
-    return f"IP ADDRESS DETAILS:\n\n{result}"
 
 @mcp.tool(name="remove_ip_address", annotations=annotate(DESTRUCTIVE, "Remove IP Address"))
 async def mikrotik_remove_ip_address(ctx: Context, address_id: str) -> str:

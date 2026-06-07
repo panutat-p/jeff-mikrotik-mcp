@@ -15,10 +15,10 @@ def test_list_packages_command(ctx, monkeypatch):
     fake = FakeExecutor()
     monkeypatch.setattr(packages, "execute_mikrotik_command", fake, raising=True)
 
-    _run(packages.mikrotik_list_packages(ctx))
+    _run(packages.mikrotik_query_packages(ctx))
     assert fake.commands[-1] == "/system package print"
 
-    _run(packages.mikrotik_list_packages(ctx, name_filter="container"))
+    _run(packages.mikrotik_query_packages(ctx, name_filter="container"))
     assert fake.commands[-1] == '/system package print where name~"container"'
 
 

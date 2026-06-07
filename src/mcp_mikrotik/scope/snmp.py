@@ -60,38 +60,29 @@ async def mikrotik_set_snmp_settings(
     return f"SNMP settings updated successfully:\n\n{details}"
 
 
-@mcp.tool(name="list_snmp_communities", annotations=annotate(READ, "List SNMP Communities"))
-async def mikrotik_list_snmp_communities(
+@mcp.tool(name="query_snmp_communities", annotations=annotate(READ, "Query SNMP Communities"))
+async def mikrotik_query_snmp_communities(
     ctx: Context,
+    community_id: Optional[str] = None,
     name_filter: Optional[str] = None,
 ) -> str:
-    """Lists SNMP communities."""
-    await ctx.info(f"Listing SNMP communities: name_filter={name_filter}")
+    """Lists SNMP communities or returns detail for a specific one by community_id."""
+    if community_id:
+        await ctx.info(f"Getting SNMP community: community_id={community_id}")
+        cmd = f"/snmp community print detail where .id={community_id}"
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"SNMP community with ID '{community_id}' not found."
+        return f"SNMP COMMUNITY DETAILS:\n\n{result}"
 
+    await ctx.info(f"Listing SNMP communities: name_filter={name_filter}")
     cmd = "/snmp community print"
     if name_filter:
         cmd += f' where name~"{name_filter}"'
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No SNMP communities found matching the criteria."
-
     return f"SNMP COMMUNITIES:\n\n{result}"
-
-
-@mcp.tool(name="get_snmp_community", annotations=annotate(READ, "Get SNMP Community"))
-async def mikrotik_get_snmp_community(ctx: Context, community_id: str) -> str:
-    """Gets details of a specific SNMP community by .id (e.g. *1)."""
-    await ctx.info(f"Getting SNMP community: community_id={community_id}")
-
-    cmd = f"/snmp community print detail where .id={community_id}"
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"SNMP community with ID '{community_id}' not found."
-
-    return f"SNMP COMMUNITY DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="add_snmp_community", annotations=annotate(WRITE, "Add SNMP Community"))

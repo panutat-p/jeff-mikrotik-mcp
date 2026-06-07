@@ -11,46 +11,35 @@ from ..connector import execute_mikrotik_command, wait_for_router_ssh
 # Package Management
 # ---------------------------------------------------------------------------
 
-@mcp.tool(name="list_packages", annotations=annotate(READ, "List Packages"))
-async def mikrotik_list_packages(
+@mcp.tool(name="query_packages", annotations=annotate(READ, "Query Packages"))
+async def mikrotik_query_packages(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     disabled_only: bool = False,
 ) -> str:
-    """Lists installed RouterOS packages and any scheduled changes."""
+    """Lists installed RouterOS packages or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting package details: name={name}")
+        cmd = f'/system package print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"Package '{name}' not found."
+        return f"PACKAGE DETAILS:\n\n{result}"
+
     await ctx.info("Listing packages")
-
     cmd = "/system package print"
-
     filters = []
     if name_filter:
         filters.append(f'name~"{name_filter}"')
     if disabled_only:
         filters.append("disabled=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No packages found."
-
     return f"PACKAGES:\n\n{result}"
-
-
-@mcp.tool(name="get_package", annotations=annotate(READ, "Get Package"))
-async def mikrotik_get_package(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific RouterOS package."""
-    await ctx.info(f"Getting package details: name={name}")
-
-    cmd = f'/system package print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"Package '{name}' not found."
-
-    return f"PACKAGE DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="enable_package", annotations=annotate(WRITE_IDEMPOTENT, "Enable Package"))

@@ -10,46 +10,35 @@ from ..connector import execute_mikrotik_command
 # Container Management
 # ---------------------------------------------------------------------------
 
-@mcp.tool(name="list_containers", annotations=annotate(READ, "List Containers"))
-async def mikrotik_list_containers(
+@mcp.tool(name="query_containers", annotations=annotate(READ, "Query Containers"))
+async def mikrotik_query_containers(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     disabled_only: bool = False,
 ) -> str:
-    """Lists containers on the MikroTik device."""
+    """Lists containers or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting container details: name={name}")
+        cmd = f'/container print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"Container '{name}' not found."
+        return f"CONTAINER DETAILS:\n\n{result}"
+
     await ctx.info("Listing containers")
-
     cmd = "/container print"
-
     filters = []
     if name_filter:
         filters.append(f'name~"{name_filter}"')
     if disabled_only:
         filters.append("disabled=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No containers found."
-
     return f"CONTAINERS:\n\n{result}"
-
-
-@mcp.tool(name="get_container", annotations=annotate(READ, "Get Container"))
-async def mikrotik_get_container(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific container."""
-    await ctx.info(f"Getting container details: name={name}")
-
-    cmd = f'/container print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"Container '{name}' not found."
-
-    return f"CONTAINER DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="create_container", annotations=annotate(WRITE, "Create Container"))
@@ -490,30 +479,24 @@ async def mikrotik_remove_container_env(ctx: Context, env_id: str) -> str:
 # Container Configuration
 # ---------------------------------------------------------------------------
 
-@mcp.tool(name="list_container_configs", annotations=annotate(READ, "List Container Configs"))
-async def mikrotik_list_container_configs(ctx: Context) -> str:
-    """Lists global container configuration."""
+@mcp.tool(name="query_container_config", annotations=annotate(READ, "Query Container Config"))
+async def mikrotik_query_container_config(
+    ctx: Context,
+    detail: bool = False,
+) -> str:
+    """Lists or returns detailed global container configuration."""
+    if detail:
+        await ctx.info("Getting container configuration details")
+        result = await execute_mikrotik_command("/container/config print detail", ctx)
+        if not result or result.strip() == "":
+            return "Container configuration not found."
+        return f"CONTAINER CONFIG DETAILS:\n\n{result}"
+
     await ctx.info("Listing container configuration")
-
     result = await execute_mikrotik_command("/container/config print", ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No container configuration found."
-
     return f"CONTAINER CONFIG:\n\n{result}"
-
-
-@mcp.tool(name="get_container_config", annotations=annotate(READ, "Get Container Config"))
-async def mikrotik_get_container_config(ctx: Context) -> str:
-    """Gets detailed global container configuration."""
-    await ctx.info("Getting container configuration details")
-
-    result = await execute_mikrotik_command("/container/config print detail", ctx)
-
-    if not result or result.strip() == "":
-        return "Container configuration not found."
-
-    return f"CONTAINER CONFIG DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="add_container_config", annotations=annotate(WRITE, "Add Container Config"))

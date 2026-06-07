@@ -12,7 +12,7 @@ pytest.importorskip("testcontainers.core.container")
 from testcontainers.core.container import DockerContainer
 
 from mcp_mikrotik import config as mikrotik_config_module
-from mcp_mikrotik.scope.users import mikrotik_add_user, mikrotik_list_users, mikrotik_remove_user
+from mcp_mikrotik.scope.users import mikrotik_add_user, mikrotik_query_users, mikrotik_remove_user
 
 
 def _make_ctx():
@@ -184,7 +184,7 @@ class TestMikroTikUserIntegration:
     def test_02_list_users(self, mikrotik_container):
         print(f"\n=== Testing user listing ===")
         ctx = _make_ctx()
-        result = asyncio.run(mikrotik_list_users(ctx=ctx))
+        result = asyncio.run(mikrotik_query_users(ctx=ctx))
         print(result)
         assert "admin" in result
         assert self.test_username in result
@@ -196,5 +196,5 @@ class TestMikroTikUserIntegration:
         assert "removed successfully" in result.lower()
 
         # confirm it's gone
-        result = asyncio.run(mikrotik_list_users(ctx=ctx))
+        result = asyncio.run(mikrotik_query_users(ctx=ctx))
         assert self.test_username not in result

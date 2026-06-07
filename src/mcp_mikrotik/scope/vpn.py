@@ -63,18 +63,25 @@ async def mikrotik_create_ovpn_server(
     return "OVPN server created successfully."
 
 
-@mcp.tool(name="list_ovpn_servers", annotations=annotate(READ, "List OVPN Servers"))
-async def mikrotik_list_ovpn_servers(
+@mcp.tool(name="query_ovpn_servers", annotations=annotate(READ, "Query OVPN Servers"))
+async def mikrotik_query_ovpn_servers(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     disabled_only: bool = False,
     running_only: bool = False,
 ) -> str:
-    """Lists OpenVPN server interfaces on the MikroTik device."""
+    """Lists OpenVPN server interfaces or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting OVPN server details: name={name}")
+        cmd = f'/interface ovpn-server print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"OVPN server '{name}' not found."
+        return f"OVPN SERVER DETAILS:\n\n{result}"
+
     await ctx.info("Listing OVPN servers")
-
     cmd = "/interface ovpn-server print"
-
     filters = []
     if name_filter:
         filters.append(f'name~"{name_filter}"')
@@ -82,30 +89,12 @@ async def mikrotik_list_ovpn_servers(
         filters.append("disabled=yes")
     if running_only:
         filters.append("running=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No OVPN servers found."
-
     return f"OVPN SERVERS:\n\n{result}"
-
-
-@mcp.tool(name="get_ovpn_server", annotations=annotate(READ, "Get OVPN Server"))
-async def mikrotik_get_ovpn_server(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific OpenVPN server interface."""
-    await ctx.info(f"Getting OVPN server details: name={name}")
-
-    cmd = f'/interface ovpn-server print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"OVPN server '{name}' not found."
-
-    return f"OVPN SERVER DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="update_ovpn_server", annotations=annotate(WRITE_IDEMPOTENT, "Update OVPN Server"))
@@ -323,18 +312,25 @@ async def mikrotik_add_ipsec_peer(
     return "IPsec peer added successfully."
 
 
-@mcp.tool(name="list_ipsec_peers", annotations=annotate(READ, "List IPsec Peers"))
-async def mikrotik_list_ipsec_peers(
+@mcp.tool(name="query_ipsec_peers", annotations=annotate(READ, "Query IPsec Peers"))
+async def mikrotik_query_ipsec_peers(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     address_filter: Optional[str] = None,
     disabled_only: bool = False,
 ) -> str:
-    """Lists IPsec peers on the MikroTik device."""
+    """Lists IPsec peers or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting IPsec peer details: name={name}")
+        cmd = f'/ip ipsec peer print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"IPsec peer '{name}' not found."
+        return f"IPSEC PEER DETAILS:\n\n{_mask_passwords(result)}"
+
     await ctx.info("Listing IPsec peers")
-
     cmd = "/ip ipsec peer print"
-
     filters = []
     if name_filter:
         filters.append(f'name~"{name_filter}"')
@@ -342,30 +338,12 @@ async def mikrotik_list_ipsec_peers(
         filters.append(f'address="{address_filter}"')
     if disabled_only:
         filters.append("disabled=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No IPsec peers found."
-
     return f"IPSEC PEERS:\n\n{_mask_passwords(result)}"
-
-
-@mcp.tool(name="get_ipsec_peer", annotations=annotate(READ, "Get IPsec Peer"))
-async def mikrotik_get_ipsec_peer(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific IPsec peer."""
-    await ctx.info(f"Getting IPsec peer details: name={name}")
-
-    cmd = f'/ip ipsec peer print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"IPsec peer '{name}' not found."
-
-    return f"IPSEC PEER DETAILS:\n\n{_mask_passwords(result)}"
 
 
 @mcp.tool(name="remove_ipsec_peer", annotations=annotate(DESTRUCTIVE, "Remove IPsec Peer"))
@@ -434,39 +412,29 @@ async def mikrotik_add_ipsec_proposal(
     return "IPsec proposal added successfully."
 
 
-@mcp.tool(name="list_ipsec_proposals", annotations=annotate(READ, "List IPsec Proposals"))
-async def mikrotik_list_ipsec_proposals(
+@mcp.tool(name="query_ipsec_proposals", annotations=annotate(READ, "Query IPsec Proposals"))
+async def mikrotik_query_ipsec_proposals(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
 ) -> str:
-    """Lists IPsec proposals on the MikroTik device."""
+    """Lists IPsec proposals or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting IPsec proposal details: name={name}")
+        cmd = f'/ip ipsec proposal print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"IPsec proposal '{name}' not found."
+        return f"IPSEC PROPOSAL DETAILS:\n\n{result}"
+
     await ctx.info("Listing IPsec proposals")
-
     cmd = "/ip ipsec proposal print"
-
     if name_filter:
         cmd += f' where name~"{name_filter}"'
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No IPsec proposals found."
-
     return f"IPSEC PROPOSALS:\n\n{result}"
-
-
-@mcp.tool(name="get_ipsec_proposal", annotations=annotate(READ, "Get IPsec Proposal"))
-async def mikrotik_get_ipsec_proposal(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific IPsec proposal."""
-    await ctx.info(f"Getting IPsec proposal details: name={name}")
-
-    cmd = f'/ip ipsec proposal print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"IPsec proposal '{name}' not found."
-
-    return f"IPSEC PROPOSAL DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="remove_ipsec_proposal", annotations=annotate(DESTRUCTIVE, "Remove IPsec Proposal"))

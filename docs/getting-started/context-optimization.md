@@ -1,12 +1,14 @@
 # Context Length Optimization
 
-MikroTik MCP ships **162 tools**. At full verbosity the tool schema can occupy
-≈ 54 000 tokens — more than the entire context window of many local LLMs
-(LM Studio, Ollama, etc.).
+MikroTik MCP ships **281 tools** (down from 318 after consolidating read
+pairs). At full verbosity the tool schema can occupy a large share of the
+context window for local LLMs (LM Studio, Ollama, etc.).
 
-Starting with this release every tool carries a short **`title` annotation**
-(MCP spec 2025-03-26) and a trimmed description, reducing the description
-token budget by **~75 %**.
+Two complementary strategies reduce prompt bloat:
+
+1. **`title` annotations** (MCP spec 2025-03-26) plus trimmed descriptions
+2. **`query_X` tool consolidation** — one read tool per resource instead of
+   separate `list_X` + `get_X` pairs
 
 ---
 
@@ -14,7 +16,7 @@ token budget by **~75 %**.
 
 ### 1. `title` in `ToolAnnotations`
 
-Every `@mcp.tool()` call now passes `annotations=annotate(READ|WRITE|…, "Short Title")`.
+Every `@mcp.tool()` call passes `annotations=annotate(READ|WRITE|…, "Short Title")`.
 
 ```python
 # before
@@ -36,14 +38,38 @@ sections have been replaced by concise one-liners.  The function signature
 already carries full type information; the description only needs to convey
 *what* the tool does.
 
-| Tool | Before | After |
-|------|--------|-------|
-| `create_queue_type` | 1 580 chars | 145 chars |
-| `generate_wireguard_client_config` | 1 519 chars | 91 chars |
-| `create_filter_rule` | 1 080 chars | ≤ 120 chars |
-| _all 162 tools (avg)_ | **209 chars** | **51 chars** |
+Estimated description-token savings from trimming: **≈ 75 % reduction** on
+per-tool description text.
 
-Estimated description-token savings: **≈ 6 400 tokens** (≈ 75 % reduction).
+### 3. Tool consolidation (`query_X`)
+
+Thirty-five `list_X` / `get_X` pairs were merged into single **`query_X`**
+tools, removing **35 tools** from the MCP surface (318 → **281**).
+
+| Pattern | Example | Behaviour |
+|---------|---------|-----------|
+| Name-based detail | `query_schedulers` | Omit `name` → list with filters; set `name` → `print detail where name=…` |
+| ID-based detail | `query_filter_rules` | Omit `rule_id` → list; set `rule_id` → `print detail where .id=…` |
+| Singleton config | `query_container_config` | Default → summary print; `detail=true` → detailed print |
+
+```python
+# List schedulers matching a filter
+query_schedulers(name_filter="backup")
+
+# Get one scheduler by exact name
+query_schedulers(name="daily-backup")
+
+# Get a firewall rule by .id from list output
+query_filter_rules(rule_id="*3")
+```
+
+**Why this helps:** Fewer similarly-named tools means less LLM confusion when
+choosing between `list_users` vs `get_user`. One `query_users` covers both
+discovery and detail views with the same parameter schema.
+
+Singleton reads (`get_dns_settings`, `get_system_resource`, `get_poe_monitor`,
+etc.) and list-only tools (`list_backups`, `list_hotspot_active`, …) were
+left unchanged.
 
 ---
 
@@ -57,13 +83,12 @@ are building an integration, prefer displaying the title in compact views.
 
 ### Local LLMs with small context windows
 
-Even without client-side filtering, the trimmed descriptions directly reduce
-the tokens consumed at MCP initialisation.  For a 64 k-token LLM this brings
-the tool schema from **≈ 54 k tokens → ≈ 48 k tokens**, leaving meaningful
-room for the conversation.
+Trimmed descriptions and fewer tools both reduce tokens consumed at MCP
+initialisation. After consolidation the tool count dropped by **~11 %**
+(35 fewer schemas in the tool list).
 
 > **Further reduction:** If you only need a subset of tools (e.g. only DNS
-> and WireGuard), you can comment out the unused scope imports in
+> and WireGuard), comment out the unused scope imports in
 > `src/mcp_mikrotik/app.py` to drop those tools entirely.
 
 ---
@@ -84,8 +109,21 @@ def annotate(base: ToolAnnotations, title: str) -> ToolAnnotations:
     )
 ```
 
-When adding new tools, always use `annotate()` instead of a bare annotation
-constant:
+When adding new read tools, prefer a single **`query_<resource>`** with an
+optional identity parameter (`name`, `rule_id`, etc.) instead of separate
+list and get tools:
+
+```python
+# ✅ preferred — one tool for list and detail
+@mcp.tool(name="query_schedulers", annotations=annotate(READ, "Query Schedulers"))
+async def mikrotik_query_schedulers(ctx, name: Optional[str] = None, ...): ...
+
+# ❌ avoid — doubles the tool count for the same RouterOS path
+@mcp.tool(name="list_schedulers", ...)
+@mcp.tool(name="get_scheduler", ...)
+```
+
+Always use `annotate()` instead of a bare annotation constant:
 
 ```python
 # ✅ correct

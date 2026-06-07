@@ -14,46 +14,35 @@ from ..connector import (
 # Certificate Management
 # ---------------------------------------------------------------------------
 
-@mcp.tool(name="list_certificates", annotations=annotate(READ, "List Certificates"))
-async def mikrotik_list_certificates(
+@mcp.tool(name="query_certificates", annotations=annotate(READ, "Query Certificates"))
+async def mikrotik_query_certificates(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     expired_only: bool = False,
 ) -> str:
-    """Lists certificates on the MikroTik device."""
+    """Lists certificates or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting certificate details: name={name}")
+        cmd = f'/certificate print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"Certificate '{name}' not found."
+        return f"CERTIFICATE DETAILS:\n\n{result}"
+
     await ctx.info("Listing certificates")
-
     cmd = "/certificate print"
-
     filters = []
     if name_filter:
         filters.append(f'name~"{name_filter}"')
     if expired_only:
         filters.append("expired=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No certificates found."
-
     return f"CERTIFICATES:\n\n{result}"
-
-
-@mcp.tool(name="get_certificate", annotations=annotate(READ, "Get Certificate"))
-async def mikrotik_get_certificate(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific certificate."""
-    await ctx.info(f"Getting certificate details: name={name}")
-
-    cmd = f'/certificate print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"Certificate '{name}' not found."
-
-    return f"CERTIFICATE DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="create_certificate", annotations=annotate(WRITE, "Create Certificate"))

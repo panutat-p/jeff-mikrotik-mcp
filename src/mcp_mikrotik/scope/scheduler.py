@@ -10,46 +10,35 @@ from ..connector import execute_mikrotik_command
 # Scheduler Management
 # ---------------------------------------------------------------------------
 
-@mcp.tool(name="list_schedulers", annotations=annotate(READ, "List Schedulers"))
-async def mikrotik_list_schedulers(
+@mcp.tool(name="query_schedulers", annotations=annotate(READ, "Query Schedulers"))
+async def mikrotik_query_schedulers(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     disabled_only: bool = False,
 ) -> str:
-    """Lists system schedulers on the MikroTik device."""
+    """Lists system schedulers or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting scheduler details: name={name}")
+        cmd = f'/system scheduler print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"Scheduler '{name}' not found."
+        return f"SCHEDULER DETAILS:\n\n{result}"
+
     await ctx.info("Listing schedulers")
-
     cmd = "/system scheduler print"
-
     filters = []
     if name_filter:
         filters.append(f'name~"{name_filter}"')
     if disabled_only:
         filters.append("disabled=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No schedulers found."
-
     return f"SCHEDULERS:\n\n{result}"
-
-
-@mcp.tool(name="get_scheduler", annotations=annotate(READ, "Get Scheduler"))
-async def mikrotik_get_scheduler(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific scheduler."""
-    await ctx.info(f"Getting scheduler details: name={name}")
-
-    cmd = f'/system scheduler print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"Scheduler '{name}' not found."
-
-    return f"SCHEDULER DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="create_scheduler", annotations=annotate(WRITE, "Create Scheduler"))
@@ -200,46 +189,35 @@ async def mikrotik_disable_scheduler(ctx: Context, name: str) -> str:
 # Script Management
 # ---------------------------------------------------------------------------
 
-@mcp.tool(name="list_scripts", annotations=annotate(READ, "List Scripts"))
-async def mikrotik_list_scripts(
+@mcp.tool(name="query_scripts", annotations=annotate(READ, "Query Scripts"))
+async def mikrotik_query_scripts(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     policy_filter: Optional[str] = None,
 ) -> str:
-    """Lists system scripts on the MikroTik device."""
+    """Lists system scripts or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting script details: name={name}")
+        cmd = f'/system script print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"Script '{name}' not found."
+        return f"SCRIPT DETAILS:\n\n{result}"
+
     await ctx.info("Listing scripts")
-
     cmd = "/system script print"
-
     filters = []
     if name_filter:
         filters.append(f'name~"{name_filter}"')
     if policy_filter:
         filters.append(f'policy~"{policy_filter}"')
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No scripts found."
-
     return f"SCRIPTS:\n\n{result}"
-
-
-@mcp.tool(name="get_script", annotations=annotate(READ, "Get Script"))
-async def mikrotik_get_script(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific system script."""
-    await ctx.info(f"Getting script details: name={name}")
-
-    cmd = f'/system script print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"Script '{name}' not found."
-
-    return f"SCRIPT DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="create_script", annotations=annotate(WRITE, "Create Script"))

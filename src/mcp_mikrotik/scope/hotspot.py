@@ -63,18 +63,25 @@ async def mikrotik_create_hotspot_server(
     return "Hotspot server created successfully."
 
 
-@mcp.tool(name="list_hotspot_servers", annotations=annotate(READ, "List Hotspot Servers"))
-async def mikrotik_list_hotspot_servers(
+@mcp.tool(name="query_hotspot_servers", annotations=annotate(READ, "Query Hotspot Servers"))
+async def mikrotik_query_hotspot_servers(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     interface_filter: Optional[str] = None,
     disabled_only: bool = False,
 ) -> str:
-    """Lists Hotspot servers on the MikroTik device."""
+    """Lists Hotspot servers or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting Hotspot server details: name={name}")
+        cmd = f'/ip hotspot print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"Hotspot server '{name}' not found."
+        return f"HOTSPOT SERVER DETAILS:\n\n{result}"
+
     await ctx.info("Listing Hotspot servers")
-
     cmd = "/ip hotspot print"
-
     filters = []
     if name_filter:
         filters.append(f'name~"{name_filter}"')
@@ -82,30 +89,12 @@ async def mikrotik_list_hotspot_servers(
         filters.append(f'interface="{interface_filter}"')
     if disabled_only:
         filters.append("disabled=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No Hotspot servers found."
-
     return f"HOTSPOT SERVERS:\n\n{result}"
-
-
-@mcp.tool(name="get_hotspot_server", annotations=annotate(READ, "Get Hotspot Server"))
-async def mikrotik_get_hotspot_server(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific Hotspot server."""
-    await ctx.info(f"Getting Hotspot server details: name={name}")
-
-    cmd = f'/ip hotspot print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"Hotspot server '{name}' not found."
-
-    return f"HOTSPOT SERVER DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="update_hotspot_server", annotations=annotate(WRITE_IDEMPOTENT, "Update Hotspot Server"))
@@ -255,39 +244,29 @@ async def mikrotik_create_hotspot_profile(
     return "Hotspot profile created successfully."
 
 
-@mcp.tool(name="list_hotspot_profiles", annotations=annotate(READ, "List Hotspot Profiles"))
-async def mikrotik_list_hotspot_profiles(
+@mcp.tool(name="query_hotspot_profiles", annotations=annotate(READ, "Query Hotspot Profiles"))
+async def mikrotik_query_hotspot_profiles(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
 ) -> str:
-    """Lists Hotspot profiles on the MikroTik device."""
+    """Lists Hotspot profiles or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting Hotspot profile details: name={name}")
+        cmd = f'/ip hotspot profile print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"Hotspot profile '{name}' not found."
+        return f"HOTSPOT PROFILE DETAILS:\n\n{result}"
+
     await ctx.info("Listing Hotspot profiles")
-
     cmd = "/ip hotspot profile print"
-
     if name_filter:
         cmd += f' where name~"{name_filter}"'
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No Hotspot profiles found."
-
     return f"HOTSPOT PROFILES:\n\n{result}"
-
-
-@mcp.tool(name="get_hotspot_profile", annotations=annotate(READ, "Get Hotspot Profile"))
-async def mikrotik_get_hotspot_profile(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific Hotspot profile."""
-    await ctx.info(f"Getting Hotspot profile details: name={name}")
-
-    cmd = f'/ip hotspot profile print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"Hotspot profile '{name}' not found."
-
-    return f"HOTSPOT PROFILE DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="update_hotspot_profile", annotations=annotate(WRITE_IDEMPOTENT, "Update Hotspot Profile"))
@@ -406,19 +385,26 @@ async def mikrotik_add_hotspot_user(
     return "Hotspot user added successfully."
 
 
-@mcp.tool(name="list_hotspot_users", annotations=annotate(READ, "List Hotspot Users"))
-async def mikrotik_list_hotspot_users(
+@mcp.tool(name="query_hotspot_users", annotations=annotate(READ, "Query Hotspot Users"))
+async def mikrotik_query_hotspot_users(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     profile_filter: Optional[str] = None,
     server_filter: Optional[str] = None,
     disabled_only: bool = False,
 ) -> str:
-    """Lists Hotspot users on the MikroTik device."""
+    """Lists Hotspot users or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting Hotspot user details: name={name}")
+        cmd = f'/ip hotspot user print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"Hotspot user '{name}' not found."
+        return f"HOTSPOT USER DETAILS:\n\n{_mask_passwords(result)}"
+
     await ctx.info("Listing Hotspot users")
-
     cmd = "/ip hotspot user print"
-
     filters = []
     if name_filter:
         filters.append(f'name~"{name_filter}"')
@@ -428,30 +414,12 @@ async def mikrotik_list_hotspot_users(
         filters.append(f'server="{server_filter}"')
     if disabled_only:
         filters.append("disabled=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No Hotspot users found."
-
     return f"HOTSPOT USERS:\n\n{_mask_passwords(result)}"
-
-
-@mcp.tool(name="get_hotspot_user", annotations=annotate(READ, "Get Hotspot User"))
-async def mikrotik_get_hotspot_user(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific Hotspot user."""
-    await ctx.info(f"Getting Hotspot user details: name={name}")
-
-    cmd = f'/ip hotspot user print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"Hotspot user '{name}' not found."
-
-    return f"HOTSPOT USER DETAILS:\n\n{_mask_passwords(result)}"
 
 
 @mcp.tool(name="update_hotspot_user", annotations=annotate(WRITE_IDEMPOTENT, "Update Hotspot User"))

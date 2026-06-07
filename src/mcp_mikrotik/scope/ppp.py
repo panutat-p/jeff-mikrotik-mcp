@@ -67,39 +67,29 @@ async def mikrotik_create_ppp_profile(
     return "PPP profile created successfully."
 
 
-@mcp.tool(name="list_ppp_profiles", annotations=annotate(READ, "List PPP Profiles"))
-async def mikrotik_list_ppp_profiles(
+@mcp.tool(name="query_ppp_profiles", annotations=annotate(READ, "Query PPP Profiles"))
+async def mikrotik_query_ppp_profiles(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
 ) -> str:
-    """Lists PPP profiles on the MikroTik device."""
+    """Lists PPP profiles or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting PPP profile details: name={name}")
+        cmd = f'/ppp profile print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"PPP profile '{name}' not found."
+        return f"PPP PROFILE DETAILS:\n\n{result}"
+
     await ctx.info("Listing PPP profiles")
-
     cmd = "/ppp profile print"
-
     if name_filter:
         cmd += f' where name~"{name_filter}"'
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No PPP profiles found."
-
     return f"PPP PROFILES:\n\n{result}"
-
-
-@mcp.tool(name="get_ppp_profile", annotations=annotate(READ, "Get PPP Profile"))
-async def mikrotik_get_ppp_profile(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific PPP profile."""
-    await ctx.info(f"Getting PPP profile details: name={name}")
-
-    cmd = f'/ppp profile print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"PPP profile '{name}' not found."
-
-    return f"PPP PROFILE DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="update_ppp_profile", annotations=annotate(WRITE_IDEMPOTENT, "Update PPP Profile"))
@@ -212,19 +202,26 @@ async def mikrotik_add_ppp_secret(
     return "PPP secret added successfully."
 
 
-@mcp.tool(name="list_ppp_secrets", annotations=annotate(READ, "List PPP Secrets"))
-async def mikrotik_list_ppp_secrets(
+@mcp.tool(name="query_ppp_secrets", annotations=annotate(READ, "Query PPP Secrets"))
+async def mikrotik_query_ppp_secrets(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     service_filter: Optional[str] = None,
     profile_filter: Optional[str] = None,
     disabled_only: bool = False,
 ) -> str:
-    """Lists PPP secrets on the MikroTik device."""
+    """Lists PPP secrets or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting PPP secret details: name={name}")
+        cmd = f'/ppp secret print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"PPP secret '{name}' not found."
+        return f"PPP SECRET DETAILS:\n\n{_mask_passwords(result)}"
+
     await ctx.info("Listing PPP secrets")
-
     cmd = "/ppp secret print"
-
     filters = []
     if name_filter:
         filters.append(f'name~"{name_filter}"')
@@ -234,30 +231,12 @@ async def mikrotik_list_ppp_secrets(
         filters.append(f'profile="{profile_filter}"')
     if disabled_only:
         filters.append("disabled=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No PPP secrets found."
-
     return f"PPP SECRETS:\n\n{_mask_passwords(result)}"
-
-
-@mcp.tool(name="get_ppp_secret", annotations=annotate(READ, "Get PPP Secret"))
-async def mikrotik_get_ppp_secret(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific PPP secret."""
-    await ctx.info(f"Getting PPP secret details: name={name}")
-
-    cmd = f'/ppp secret print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"PPP secret '{name}' not found."
-
-    return f"PPP SECRET DETAILS:\n\n{_mask_passwords(result)}"
 
 
 @mcp.tool(name="update_ppp_secret", annotations=annotate(WRITE_IDEMPOTENT, "Update PPP Secret"))
@@ -386,28 +365,37 @@ async def mikrotik_add_ppp_interface(
     return "PPP interface added successfully."
 
 
-@mcp.tool(name="list_ppp_interfaces", annotations=annotate(READ, "List PPP Interfaces"))
-async def mikrotik_list_ppp_interfaces(
+@mcp.tool(name="query_ppp_interfaces", annotations=annotate(READ, "Query PPP Interfaces"))
+async def mikrotik_query_ppp_interfaces(
     ctx: Context,
+    name: Optional[str] = None,
     interface_type: Optional[PPPInterfaceType] = None,
     name_filter: Optional[str] = None,
     disabled_only: bool = False,
     running_only: bool = False,
 ) -> str:
-    """Lists PPPoE server and/or client interfaces on the MikroTik device."""
-    await ctx.info("Listing PPP interfaces")
+    """Lists PPPoE interfaces or returns detail for a specific one by name and type."""
+    if name:
+        if not interface_type:
+            return "interface_type is required when querying a specific PPP interface by name."
+        await ctx.info(f"Getting PPP interface details: type={interface_type}, name={name}")
+        path = _ppp_interface_path(interface_type)
+        cmd = f'{path} print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"PPP interface '{name}' not found."
+        return f"PPP INTERFACE DETAILS:\n\n{_mask_passwords(result)}"
 
+    await ctx.info("Listing PPP interfaces")
     types_to_list: list[PPPInterfaceType]
     if interface_type:
         types_to_list = [interface_type]
     else:
         types_to_list = ["pppoe-server", "pppoe-client"]
-
     sections = []
     for ppp_type in types_to_list:
         path = _ppp_interface_path(ppp_type)
         cmd = f"{path} print"
-
         filters = []
         if name_filter:
             filters.append(f'name~"{name_filter}"')
@@ -415,38 +403,14 @@ async def mikrotik_list_ppp_interfaces(
             filters.append("disabled=yes")
         if running_only:
             filters.append("running=yes")
-
         if filters:
             cmd += " where " + " ".join(filters)
-
         result = await execute_mikrotik_command(cmd, ctx)
-
         if result and result.strip() and result.strip() != "no such item":
             sections.append(f"{ppp_type.upper()}:\n\n{_mask_passwords(result)}")
-
     if not sections:
         return "No PPP interfaces found."
-
     return "PPP INTERFACES:\n\n" + "\n\n".join(sections)
-
-
-@mcp.tool(name="get_ppp_interface", annotations=annotate(READ, "Get PPP Interface"))
-async def mikrotik_get_ppp_interface(
-    ctx: Context,
-    interface_type: PPPInterfaceType,
-    name: str,
-) -> str:
-    """Gets detailed information about a specific PPPoE server or client interface."""
-    await ctx.info(f"Getting PPP interface details: type={interface_type}, name={name}")
-
-    path = _ppp_interface_path(interface_type)
-    cmd = f'{path} print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"PPP interface '{name}' not found."
-
-    return f"PPP INTERFACE DETAILS:\n\n{_mask_passwords(result)}"
 
 
 @mcp.tool(name="remove_ppp_interface", annotations=annotate(DESTRUCTIVE, "Remove PPP Interface"))

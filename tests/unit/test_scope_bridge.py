@@ -45,5 +45,5 @@ def test_list_bonding_command(ctx, monkeypatch):
     fake = FakeExecutor()
     monkeypatch.setattr(bridge, "execute_mikrotik_command", fake, raising=True)
 
-    _run(bridge.mikrotik_list_bonding(ctx, name_filter="bond"))
+    _run(bridge.mikrotik_query_bonding(ctx, name_filter="bond"))
     assert fake.commands[-1] == '/interface bonding print where name~"bond"'

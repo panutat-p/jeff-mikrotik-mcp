@@ -44,18 +44,25 @@ async def mikrotik_create_bridge(
     return "Bridge created successfully."
 
 
-@mcp.tool(name="list_bridges", annotations=annotate(READ, "List Bridges"))
-async def mikrotik_list_bridges(
+@mcp.tool(name="query_bridges", annotations=annotate(READ, "Query Bridges"))
+async def mikrotik_query_bridges(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     disabled_only: bool = False,
     running_only: bool = False,
 ) -> str:
-    """Lists bridge interfaces on the MikroTik device."""
+    """Lists bridge interfaces or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting bridge details: name={name}")
+        cmd = f'/interface bridge print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"Bridge '{name}' not found."
+        return f"BRIDGE DETAILS:\n\n{result}"
+
     await ctx.info("Listing bridges")
-
     cmd = "/interface bridge print"
-
     filters = []
     if name_filter:
         filters.append(f'name~"{name_filter}"')
@@ -63,30 +70,12 @@ async def mikrotik_list_bridges(
         filters.append("disabled=yes")
     if running_only:
         filters.append("running=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No bridges found."
-
     return f"BRIDGES:\n\n{result}"
-
-
-@mcp.tool(name="get_bridge", annotations=annotate(READ, "Get Bridge"))
-async def mikrotik_get_bridge(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific bridge interface."""
-    await ctx.info(f"Getting bridge details: name={name}")
-
-    cmd = f'/interface bridge print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"Bridge '{name}' not found."
-
-    return f"BRIDGE DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="update_bridge", annotations=annotate(WRITE_IDEMPOTENT, "Update Bridge"))
@@ -341,18 +330,25 @@ async def mikrotik_create_bonding(
     return "Bonding interface created successfully."
 
 
-@mcp.tool(name="list_bonding", annotations=annotate(READ, "List Bonding"))
-async def mikrotik_list_bonding(
+@mcp.tool(name="query_bonding", annotations=annotate(READ, "Query Bonding"))
+async def mikrotik_query_bonding(
     ctx: Context,
+    name: Optional[str] = None,
     name_filter: Optional[str] = None,
     disabled_only: bool = False,
     running_only: bool = False,
 ) -> str:
-    """Lists bonding interfaces on the MikroTik device."""
+    """Lists bonding interfaces or returns detail for a specific one by name."""
+    if name:
+        await ctx.info(f"Getting bonding interface details: name={name}")
+        cmd = f'/interface bonding print detail where name="{name}"'
+        result = await execute_mikrotik_command(cmd, ctx)
+        if not result or result.strip() == "":
+            return f"Bonding interface '{name}' not found."
+        return f"BONDING DETAILS:\n\n{result}"
+
     await ctx.info("Listing bonding interfaces")
-
     cmd = "/interface bonding print"
-
     filters = []
     if name_filter:
         filters.append(f'name~"{name_filter}"')
@@ -360,30 +356,12 @@ async def mikrotik_list_bonding(
         filters.append("disabled=yes")
     if running_only:
         filters.append("running=yes")
-
     if filters:
         cmd += " where " + " ".join(filters)
-
     result = await execute_mikrotik_command(cmd, ctx)
-
     if not result or result.strip() == "" or result.strip() == "no such item":
         return "No bonding interfaces found."
-
     return f"BONDING INTERFACES:\n\n{result}"
-
-
-@mcp.tool(name="get_bonding", annotations=annotate(READ, "Get Bonding"))
-async def mikrotik_get_bonding(ctx: Context, name: str) -> str:
-    """Gets detailed information about a specific bonding interface."""
-    await ctx.info(f"Getting bonding interface details: name={name}")
-
-    cmd = f'/interface bonding print detail where name="{name}"'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if not result or result.strip() == "":
-        return f"Bonding interface '{name}' not found."
-
-    return f"BONDING DETAILS:\n\n{result}"
 
 
 @mcp.tool(name="update_bonding", annotations=annotate(WRITE_IDEMPOTENT, "Update Bonding"))
