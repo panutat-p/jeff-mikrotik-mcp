@@ -334,3 +334,4 @@ _templates/
 .aider*
 
 mcp-config.json
+.cursor/
