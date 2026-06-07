@@ -1,3 +1,4 @@
+import base64
 from typing import Literal, Optional
 
 from mcp.server.fastmcp import Context
@@ -8,8 +9,6 @@ from ..connector import (
     upload_file_to_router,
     download_file_from_router,
 )
-import base64
-
 
 # ---------------------------------------------------------------------------
 # Certificate Management

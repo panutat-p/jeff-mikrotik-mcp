@@ -1,10 +1,11 @@
-from typing import Literal, Optional, List
-from ..app import mcp, READ, WRITE, DANGEROUS, annotate
-from ..connector import execute_mikrotik_command, upload_file_to_router, download_file_from_router
-from mcp.server.fastmcp import Context
 import base64
 import time
-import os
+from typing import Literal, Optional, List
+
+from mcp.server.fastmcp import Context
+
+from ..app import mcp, READ, WRITE, DANGEROUS, annotate
+from ..connector import execute_mikrotik_command, upload_file_to_router, download_file_from_router
 
 @mcp.tool(name="create_backup", annotations=annotate(WRITE, "Create Backup"))
 async def mikrotik_create_backup(
@@ -35,8 +36,6 @@ async def mikrotik_create_backup(
 
     result = await execute_mikrotik_command(cmd, ctx)
 
-    # Check if backup was successful
-    print(result)
     if "saved" in result or not result.strip():
         # Get file details
         file_cmd = f"/file print detail where name={name}.backup"

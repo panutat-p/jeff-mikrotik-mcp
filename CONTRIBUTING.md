@@ -31,11 +31,12 @@ To add a new MikroTik feature/scope to the project, follow these steps:
 Navigate to `src/mcp_mikrotik/scope/` and create a new Python file for your feature (e.g., `my_feature.py`).
 
 Your scope file should:
-- Import `mcp` and the appropriate `ToolAnnotations` constant from `..app`
+- Import `mcp`, the appropriate `ToolAnnotations` constant, **and `annotate`** from `..app`
 - Import `execute_mikrotik_command` from `..connector`
-- Register tools using `@mcp.tool()` decorators with annotations
+- Register tools using `@mcp.tool()` decorators — **always use `annotate(BASE, "Title")`**
 - Follow the existing naming convention: `mikrotik_<action>_<resource>`
 - Use type hints for all parameters (including `Literal` for fixed-value params)
+- Keep docstrings **concise** — a single sentence is ideal
 - Handle errors gracefully and return meaningful messages
 
 **Example structure** (based on `dhcp.py`):
@@ -43,9 +44,9 @@ Your scope file should:
 from typing import Optional
 from mcp.server.fastmcp import Context
 from ..connector import execute_mikrotik_command
-from ..app import mcp, READ, WRITE
+from ..app import mcp, READ, WRITE, annotate
 
-@mcp.tool(name="create_my_resource", annotations=WRITE)
+@mcp.tool(name="create_my_resource", annotations=annotate(WRITE, "Create My Resource"))
 async def mikrotik_create_my_resource(
     ctx: Context,
     name: str,

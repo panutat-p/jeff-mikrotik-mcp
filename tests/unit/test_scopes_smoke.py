@@ -17,6 +17,7 @@ SCOPE_MODULES = [
     "firewall_filter",
     "firewall_nat",
     "hotspot",
+    "interfaces",
     "ip_address",
     "ip_pool",
     "logs",
