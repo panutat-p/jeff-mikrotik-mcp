@@ -247,32 +247,16 @@ async def mikrotik_stop_container(ctx: Context, name: str) -> str:
     return f"Container '{name}' stopped successfully."
 
 
-@mcp.tool(name="enable_container", annotations=annotate(WRITE_IDEMPOTENT, "Enable Container"))
-async def mikrotik_enable_container(ctx: Context, name: str) -> str:
-    """Enables a container."""
-    await ctx.info(f"Enabling container: name={name}")
-
-    cmd = f'/container enable [find name="{name}"]'
+@mcp.tool(name="set_container_enabled", annotations=annotate(WRITE_IDEMPOTENT, "Set Container Enabled"))
+async def mikrotik_set_container_enabled(ctx: Context, name: str, enabled: bool) -> str:
+    """Enables or disables a container."""
+    action = "enable" if enabled else "disable"
+    await ctx.info(f"Setting container {action}d: name={name}")
+    cmd = f'/container {action} [find name="{name}"]'
     result = await execute_mikrotik_command(cmd, ctx)
-
     if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to enable container: {result}"
-
-    return f"Container '{name}' enabled successfully."
-
-
-@mcp.tool(name="disable_container", annotations=annotate(WRITE_IDEMPOTENT, "Disable Container"))
-async def mikrotik_disable_container(ctx: Context, name: str) -> str:
-    """Disables a container."""
-    await ctx.info(f"Disabling container: name={name}")
-
-    cmd = f'/container disable [find name="{name}"]'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to disable container: {result}"
-
-    return f"Container '{name}' disabled successfully."
+        return f"Failed to {action} container: {result}"
+    return f"Container '{name}' {action}d successfully."
 
 
 # ---------------------------------------------------------------------------

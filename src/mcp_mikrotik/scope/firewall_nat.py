@@ -326,12 +326,7 @@ async def mikrotik_move_nat_rule(ctx: Context, rule_id: str, destination: int) -
 
     return f"NAT rule with ID '{rule_id}' moved to position {destination}."
 
-@mcp.tool(name="enable_nat_rule", annotations=annotate(WRITE_IDEMPOTENT, "Enable NAT Rule"))
-async def mikrotik_enable_nat_rule(ctx: Context, rule_id: str) -> str:
-    """Enables a NAT rule."""
-    return await mikrotik_update_nat_rule(ctx, rule_id, disabled=False)
-
-@mcp.tool(name="disable_nat_rule", annotations=annotate(WRITE_IDEMPOTENT, "Disable NAT Rule"))
-async def mikrotik_disable_nat_rule(ctx: Context, rule_id: str) -> str:
-    """Disables a NAT rule."""
-    return await mikrotik_update_nat_rule(ctx, rule_id, disabled=True)
+@mcp.tool(name="set_nat_rule_enabled", annotations=annotate(WRITE_IDEMPOTENT, "Set NAT Rule Enabled"))
+async def mikrotik_set_nat_rule_enabled(ctx: Context, rule_id: str, enabled: bool) -> str:
+    """Enables or disables a NAT rule."""
+    return await mikrotik_update_nat_rule(ctx, rule_id, disabled=not enabled)

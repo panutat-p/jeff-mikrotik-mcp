@@ -362,15 +362,10 @@ async def mikrotik_move_filter_rule(ctx: Context, rule_id: str, destination: int
 
     return f"Firewall filter rule with ID '{rule_id}' moved to position {destination}."
 
-@mcp.tool(name="enable_filter_rule", annotations=annotate(WRITE_IDEMPOTENT, "Enable Filter Rule"))
-async def mikrotik_enable_filter_rule(ctx: Context, rule_id: str) -> str:
-    """Enables a firewall filter rule."""
-    return await mikrotik_update_filter_rule(ctx, rule_id, disabled=False)
-
-@mcp.tool(name="disable_filter_rule", annotations=annotate(WRITE_IDEMPOTENT, "Disable Filter Rule"))
-async def mikrotik_disable_filter_rule(ctx: Context, rule_id: str) -> str:
-    """Disables a firewall filter rule."""
-    return await mikrotik_update_filter_rule(ctx, rule_id, disabled=True)
+@mcp.tool(name="set_filter_rule_enabled", annotations=annotate(WRITE_IDEMPOTENT, "Set Filter Rule Enabled"))
+async def mikrotik_set_filter_rule_enabled(ctx: Context, rule_id: str, enabled: bool) -> str:
+    """Enables or disables a firewall filter rule."""
+    return await mikrotik_update_filter_rule(ctx, rule_id, disabled=not enabled)
 
 @mcp.tool(name="create_basic_firewall_setup", annotations=annotate(DANGEROUS, "Create Basic Firewall Setup"))
 async def mikrotik_create_basic_firewall_setup(ctx: Context) -> str:

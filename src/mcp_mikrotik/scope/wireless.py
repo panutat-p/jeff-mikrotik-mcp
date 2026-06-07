@@ -234,44 +234,19 @@ async def mikrotik_remove_wireless_interface(ctx: Context, name: str) -> str:
     return f"Wireless interface '{name}' removed successfully."
 
 
-@mcp.tool(name="enable_wireless_interface", annotations=annotate(WRITE_IDEMPOTENT, "Enable Wireless Interface"))
-async def mikrotik_enable_wireless_interface(ctx: Context, name: str) -> str:
-    """Enables a wireless interface."""
-    await ctx.info(f"Enabling wireless interface: {name}")
-
-    # Detect wireless interface type
+@mcp.tool(name="set_wireless_interface_enabled", annotations=annotate(WRITE_IDEMPOTENT, "Set Wireless Interface Enabled"))
+async def mikrotik_set_wireless_interface_enabled(ctx: Context, name: str, enabled: bool) -> str:
+    """Enables or disables a wireless interface."""
+    action = "enable" if enabled else "disable"
+    await ctx.info(f"Setting wireless interface {action}d: {name}")
     interface_type = await mikrotik_detect_wireless_interface_type(ctx)
-
     if not interface_type:
         return "Error: No wireless interface support detected on this device."
-
-    cmd = f'{interface_type} enable [find name="{name}"]'
+    cmd = f'{interface_type} {action} [find name="{name}"]'
     result = await execute_mikrotik_command(cmd, ctx)
-
     if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to enable wireless interface: {result}"
-
-    return f"Wireless interface '{name}' enabled successfully."
-
-
-@mcp.tool(name="disable_wireless_interface", annotations=annotate(WRITE_IDEMPOTENT, "Disable Wireless Interface"))
-async def mikrotik_disable_wireless_interface(ctx: Context, name: str) -> str:
-    """Disables a wireless interface."""
-    await ctx.info(f"Disabling wireless interface: {name}")
-
-    # Detect wireless interface type
-    interface_type = await mikrotik_detect_wireless_interface_type(ctx)
-
-    if not interface_type:
-        return "Error: No wireless interface support detected on this device."
-
-    cmd = f'{interface_type} disable [find name="{name}"]'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to disable wireless interface: {result}"
-
-    return f"Wireless interface '{name}' disabled successfully."
+        return f"Failed to {action} wireless interface: {result}"
+    return f"Wireless interface '{name}' {action}d successfully."
 
 
 @mcp.tool(name="scan_wireless_networks", annotations=annotate(READ, "Scan Wireless Networks"))

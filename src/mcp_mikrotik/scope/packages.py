@@ -42,42 +42,20 @@ async def mikrotik_query_packages(
     return f"PACKAGES:\n\n{result}"
 
 
-@mcp.tool(name="enable_package", annotations=annotate(WRITE_IDEMPOTENT, "Enable Package"))
-async def mikrotik_enable_package(ctx: Context, name: str) -> str:
-    """Schedules a package to be enabled after the next reboot."""
-    await ctx.info(f"Scheduling package enable: name={name}")
-
-    cmd = f"/system package enable {name}"
+@mcp.tool(name="set_package_enabled", annotations=annotate(WRITE_IDEMPOTENT, "Set Package Enabled"))
+async def mikrotik_set_package_enabled(ctx: Context, name: str, enabled: bool) -> str:
+    """Schedules a package to be enabled or disabled after the next reboot."""
+    action = "enable" if enabled else "disable"
+    await ctx.info(f"Scheduling package {action}: name={name}")
+    cmd = f"/system package {action} {name}"
     result = await execute_mikrotik_command(cmd, ctx)
-
     if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to enable package: {result}"
-
+        return f"Failed to {action} package: {result}"
     details_cmd = f'/system package print detail where name="{name}"'
     details = await execute_mikrotik_command(details_cmd, ctx)
-
     if details.strip():
-        return f"Package '{name}' scheduled for enable on next reboot:\n\n{details}"
-    return f"Package '{name}' scheduled for enable on next reboot. Run apply_package_changes to reboot."
-
-
-@mcp.tool(name="disable_package", annotations=annotate(WRITE_IDEMPOTENT, "Disable Package"))
-async def mikrotik_disable_package(ctx: Context, name: str) -> str:
-    """Schedules a package to be disabled after the next reboot."""
-    await ctx.info(f"Scheduling package disable: name={name}")
-
-    cmd = f"/system package disable {name}"
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to disable package: {result}"
-
-    details_cmd = f'/system package print detail where name="{name}"'
-    details = await execute_mikrotik_command(details_cmd, ctx)
-
-    if details.strip():
-        return f"Package '{name}' scheduled for disable on next reboot:\n\n{details}"
-    return f"Package '{name}' scheduled for disable on next reboot. Run apply_package_changes to reboot."
+        return f"Package '{name}' scheduled for {action} on next reboot:\n\n{details}"
+    return f"Package '{name}' scheduled for {action} on next reboot. Run apply_package_changes to reboot."
 
 
 @mcp.tool(name="uninstall_package", annotations=annotate(DANGEROUS, "Uninstall Package"))

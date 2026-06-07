@@ -428,29 +428,13 @@ async def mikrotik_remove_bonding(ctx: Context, name: str) -> str:
     return f"Bonding interface '{name}' removed successfully."
 
 
-@mcp.tool(name="enable_bonding", annotations=annotate(WRITE_IDEMPOTENT, "Enable Bonding"))
-async def mikrotik_enable_bonding(ctx: Context, name: str) -> str:
-    """Enables a bonding interface."""
-    await ctx.info(f"Enabling bonding interface: name={name}")
-
-    cmd = f'/interface bonding enable [find name="{name}"]'
+@mcp.tool(name="set_bonding_enabled", annotations=annotate(WRITE_IDEMPOTENT, "Set Bonding Enabled"))
+async def mikrotik_set_bonding_enabled(ctx: Context, name: str, enabled: bool) -> str:
+    """Enables or disables a bonding interface."""
+    action = "enable" if enabled else "disable"
+    await ctx.info(f"Setting bonding interface {action}d: name={name}")
+    cmd = f'/interface bonding {action} [find name="{name}"]'
     result = await execute_mikrotik_command(cmd, ctx)
-
     if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to enable bonding interface: {result}"
-
-    return f"Bonding interface '{name}' enabled successfully."
-
-
-@mcp.tool(name="disable_bonding", annotations=annotate(WRITE_IDEMPOTENT, "Disable Bonding"))
-async def mikrotik_disable_bonding(ctx: Context, name: str) -> str:
-    """Disables a bonding interface."""
-    await ctx.info(f"Disabling bonding interface: name={name}")
-
-    cmd = f'/interface bonding disable [find name="{name}"]'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to disable bonding interface: {result}"
-
-    return f"Bonding interface '{name}' disabled successfully."
+        return f"Failed to {action} bonding interface: {result}"
+    return f"Bonding interface '{name}' {action}d successfully."

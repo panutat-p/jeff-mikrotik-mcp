@@ -444,36 +444,19 @@ async def mikrotik_remove_queue_tree(ctx: Context, name: str) -> str:
     return f"Queue tree '{name}' removed successfully."
 
 
-@mcp.tool(name="enable_queue_tree", annotations=annotate(WRITE_IDEMPOTENT, "Enable Queue Tree"))
-async def mikrotik_enable_queue_tree(ctx: Context, name: str) -> str:
-    """Enables a queue tree."""
-    await ctx.info(f"Enabling queue tree: name={name}")
-
-    cmd = f'/queue tree set [find name="{name}"] disabled=no'
+@mcp.tool(name="set_queue_tree_enabled", annotations=annotate(WRITE_IDEMPOTENT, "Set Queue Tree Enabled"))
+async def mikrotik_set_queue_tree_enabled(ctx: Context, name: str, enabled: bool) -> str:
+    """Enables or disables a queue tree."""
+    action = "enable" if enabled else "disable"
+    await ctx.info(f"Setting queue tree {action}d: name={name}")
+    disabled_val = "no" if enabled else "yes"
+    cmd = f'/queue tree set [find name="{name}"] disabled={disabled_val}'
     result = await execute_mikrotik_command(cmd, ctx)
-
     if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to enable queue tree: {result}"
-
+        return f"Failed to {action} queue tree: {result}"
     details_cmd = f'/queue tree print detail where name="{name}"'
     details = await execute_mikrotik_command(details_cmd, ctx)
-    return f"Queue tree enabled:\n\n{details}"
-
-
-@mcp.tool(name="disable_queue_tree", annotations=annotate(WRITE_IDEMPOTENT, "Disable Queue Tree"))
-async def mikrotik_disable_queue_tree(ctx: Context, name: str) -> str:
-    """Disables a queue tree."""
-    await ctx.info(f"Disabling queue tree: name={name}")
-
-    cmd = f'/queue tree set [find name="{name}"] disabled=yes'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to disable queue tree: {result}"
-
-    details_cmd = f'/queue tree print detail where name="{name}"'
-    details = await execute_mikrotik_command(details_cmd, ctx)
-    return f"Queue tree disabled:\n\n{details}"
+    return f"Queue tree {action}d:\n\n{details}"
 
 
 # ───────────────────────────────────────────────
@@ -689,33 +672,16 @@ async def mikrotik_remove_simple_queue(ctx: Context, name: str) -> str:
     return f"Simple queue '{name}' removed successfully."
 
 
-@mcp.tool(name="enable_simple_queue", annotations=annotate(WRITE_IDEMPOTENT, "Enable Simple Queue"))
-async def mikrotik_enable_simple_queue(ctx: Context, name: str) -> str:
-    """Enables a simple queue."""
-    await ctx.info(f"Enabling simple queue: name={name}")
-
-    cmd = f'/queue simple set [find name="{name}"] disabled=no'
+@mcp.tool(name="set_simple_queue_enabled", annotations=annotate(WRITE_IDEMPOTENT, "Set Simple Queue Enabled"))
+async def mikrotik_set_simple_queue_enabled(ctx: Context, name: str, enabled: bool) -> str:
+    """Enables or disables a simple queue."""
+    action = "enable" if enabled else "disable"
+    await ctx.info(f"Setting simple queue {action}d: name={name}")
+    disabled_val = "no" if enabled else "yes"
+    cmd = f'/queue simple set [find name="{name}"] disabled={disabled_val}'
     result = await execute_mikrotik_command(cmd, ctx)
-
     if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to enable simple queue: {result}"
-
+        return f"Failed to {action} simple queue: {result}"
     details_cmd = f'/queue simple print detail where name="{name}"'
     details = await execute_mikrotik_command(details_cmd, ctx)
-    return f"Simple queue enabled:\n\n{details}"
-
-
-@mcp.tool(name="disable_simple_queue", annotations=annotate(WRITE_IDEMPOTENT, "Disable Simple Queue"))
-async def mikrotik_disable_simple_queue(ctx: Context, name: str) -> str:
-    """Disables a simple queue."""
-    await ctx.info(f"Disabling simple queue: name={name}")
-
-    cmd = f'/queue simple set [find name="{name}"] disabled=yes'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to disable simple queue: {result}"
-
-    details_cmd = f'/queue simple print detail where name="{name}"'
-    details = await execute_mikrotik_command(details_cmd, ctx)
-    return f"Simple queue disabled:\n\n{details}"
+    return f"Simple queue {action}d:\n\n{details}"

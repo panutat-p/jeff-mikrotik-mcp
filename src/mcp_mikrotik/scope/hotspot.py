@@ -167,32 +167,16 @@ async def mikrotik_remove_hotspot_server(ctx: Context, name: str) -> str:
     return f"Hotspot server '{name}' removed successfully."
 
 
-@mcp.tool(name="enable_hotspot_server", annotations=annotate(WRITE_IDEMPOTENT, "Enable Hotspot Server"))
-async def mikrotik_enable_hotspot_server(ctx: Context, name: str) -> str:
-    """Enables a Hotspot server."""
-    await ctx.info(f"Enabling Hotspot server: name={name}")
-
-    cmd = f'/ip hotspot enable [find name="{name}"]'
+@mcp.tool(name="set_hotspot_server_enabled", annotations=annotate(WRITE_IDEMPOTENT, "Set Hotspot Server Enabled"))
+async def mikrotik_set_hotspot_server_enabled(ctx: Context, name: str, enabled: bool) -> str:
+    """Enables or disables a Hotspot server."""
+    action = "enable" if enabled else "disable"
+    await ctx.info(f"Setting Hotspot server {action}d: name={name}")
+    cmd = f'/ip hotspot {action} [find name="{name}"]'
     result = await execute_mikrotik_command(cmd, ctx)
-
     if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to enable Hotspot server: {result}"
-
-    return f"Hotspot server '{name}' enabled successfully."
-
-
-@mcp.tool(name="disable_hotspot_server", annotations=annotate(WRITE_IDEMPOTENT, "Disable Hotspot Server"))
-async def mikrotik_disable_hotspot_server(ctx: Context, name: str) -> str:
-    """Disables a Hotspot server."""
-    await ctx.info(f"Disabling Hotspot server: name={name}")
-
-    cmd = f'/ip hotspot disable [find name="{name}"]'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to disable Hotspot server: {result}"
-
-    return f"Hotspot server '{name}' disabled successfully."
+        return f"Failed to {action} Hotspot server: {result}"
+    return f"Hotspot server '{name}' {action}d successfully."
 
 
 # ---------------------------------------------------------------------------

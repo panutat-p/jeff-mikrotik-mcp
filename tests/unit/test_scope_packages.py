@@ -22,13 +22,13 @@ def test_list_packages_command(ctx, monkeypatch):
     assert fake.commands[-1] == '/system package print where name~"container"'
 
 
-def test_enable_package_command(ctx, monkeypatch):
+def test_set_package_enabled_command(ctx, monkeypatch):
     from mcp_mikrotik.scope import packages
 
     fake = FakeExecutor()
     monkeypatch.setattr(packages, "execute_mikrotik_command", fake, raising=True)
 
-    _run(packages.mikrotik_enable_package(ctx, name="container"))
+    _run(packages.mikrotik_set_package_enabled(ctx, name="container", enabled=True))
     assert fake.commands[0] == "/system package enable container"
 
 

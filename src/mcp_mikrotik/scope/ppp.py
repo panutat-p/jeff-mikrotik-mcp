@@ -439,42 +439,22 @@ async def mikrotik_remove_ppp_interface(
     return f"PPP interface '{name}' removed successfully."
 
 
-@mcp.tool(name="enable_ppp_interface", annotations=annotate(WRITE_IDEMPOTENT, "Enable PPP Interface"))
-async def mikrotik_enable_ppp_interface(
+@mcp.tool(name="set_ppp_interface_enabled", annotations=annotate(WRITE_IDEMPOTENT, "Set PPP Interface Enabled"))
+async def mikrotik_set_ppp_interface_enabled(
     ctx: Context,
     interface_type: PPPInterfaceType,
     name: str,
+    enabled: bool,
 ) -> str:
-    """Enables a PPPoE server or client interface."""
-    await ctx.info(f"Enabling PPP interface: type={interface_type}, name={name}")
-
+    """Enables or disables a PPPoE server or client interface."""
+    action = "enable" if enabled else "disable"
+    await ctx.info(f"Setting PPP interface {action}d: type={interface_type}, name={name}")
     path = _ppp_interface_path(interface_type)
-    cmd = f'{path} enable [find name="{name}"]'
+    cmd = f'{path} {action} [find name="{name}"]'
     result = await execute_mikrotik_command(cmd, ctx)
-
     if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to enable PPP interface: {result}"
-
-    return f"PPP interface '{name}' enabled successfully."
-
-
-@mcp.tool(name="disable_ppp_interface", annotations=annotate(WRITE_IDEMPOTENT, "Disable PPP Interface"))
-async def mikrotik_disable_ppp_interface(
-    ctx: Context,
-    interface_type: PPPInterfaceType,
-    name: str,
-) -> str:
-    """Disables a PPPoE server or client interface."""
-    await ctx.info(f"Disabling PPP interface: type={interface_type}, name={name}")
-
-    path = _ppp_interface_path(interface_type)
-    cmd = f'{path} disable [find name="{name}"]'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to disable PPP interface: {result}"
-
-    return f"PPP interface '{name}' disabled successfully."
+        return f"Failed to {action} PPP interface: {result}"
+    return f"PPP interface '{name}' {action}d successfully."
 
 
 # ---------------------------------------------------------------------------

@@ -157,32 +157,16 @@ async def mikrotik_remove_scheduler(ctx: Context, name: str) -> str:
     return f"Scheduler '{name}' removed successfully."
 
 
-@mcp.tool(name="enable_scheduler", annotations=annotate(WRITE_IDEMPOTENT, "Enable Scheduler"))
-async def mikrotik_enable_scheduler(ctx: Context, name: str) -> str:
-    """Enables a system scheduler."""
-    await ctx.info(f"Enabling scheduler: name={name}")
-
-    cmd = f'/system scheduler enable [find name="{name}"]'
+@mcp.tool(name="set_scheduler_enabled", annotations=annotate(WRITE_IDEMPOTENT, "Set Scheduler Enabled"))
+async def mikrotik_set_scheduler_enabled(ctx: Context, name: str, enabled: bool) -> str:
+    """Enables or disables a system scheduler."""
+    action = "enable" if enabled else "disable"
+    await ctx.info(f"Setting scheduler {action}d: name={name}")
+    cmd = f'/system scheduler {action} [find name="{name}"]'
     result = await execute_mikrotik_command(cmd, ctx)
-
     if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to enable scheduler: {result}"
-
-    return f"Scheduler '{name}' enabled successfully."
-
-
-@mcp.tool(name="disable_scheduler", annotations=annotate(WRITE_IDEMPOTENT, "Disable Scheduler"))
-async def mikrotik_disable_scheduler(ctx: Context, name: str) -> str:
-    """Disables a system scheduler."""
-    await ctx.info(f"Disabling scheduler: name={name}")
-
-    cmd = f'/system scheduler disable [find name="{name}"]'
-    result = await execute_mikrotik_command(cmd, ctx)
-
-    if "failure:" in result.lower() or "error" in result.lower():
-        return f"Failed to disable scheduler: {result}"
-
-    return f"Scheduler '{name}' disabled successfully."
+        return f"Failed to {action} scheduler: {result}"
+    return f"Scheduler '{name}' {action}d successfully."
 
 
 # ---------------------------------------------------------------------------

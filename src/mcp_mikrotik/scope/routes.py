@@ -219,23 +219,10 @@ async def mikrotik_remove_route(ctx: Context, route_id: str) -> str:
 
     return f"Route with ID '{route_id}' removed successfully."
 
-@mcp.tool(name="enable_route", annotations=annotate(WRITE_IDEMPOTENT, "Enable Route"))
-async def mikrotik_enable_route(ctx: Context, route_id: str) -> str:
-    """Enables a route.
-
-    Notes:
-        route_id: "*N" or "N" from list output e.g. "*3"
-    """
-    return await mikrotik_update_route(ctx, route_id, disabled=False)
-
-@mcp.tool(name="disable_route", annotations=annotate(WRITE_IDEMPOTENT, "Disable Route"))
-async def mikrotik_disable_route(ctx: Context, route_id: str) -> str:
-    """Disables a route.
-
-    Notes:
-        route_id: "*N" or "N" from list output e.g. "*3"
-    """
-    return await mikrotik_update_route(ctx, route_id, disabled=True)
+@mcp.tool(name="set_route_enabled", annotations=annotate(WRITE_IDEMPOTENT, "Set Route Enabled"))
+async def mikrotik_set_route_enabled(ctx: Context, route_id: str, enabled: bool) -> str:
+    """Enables or disables a route."""
+    return await mikrotik_update_route(ctx, route_id, disabled=not enabled)
 
 @mcp.tool(name="get_routing_table", annotations=annotate(READ, "Routing Table"))
 async def mikrotik_get_routing_table(
